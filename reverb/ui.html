@@ -17,7 +17,6 @@
     color:var(--text);overflow:hidden}
   .wrap{height:100%;display:flex;flex-direction:column;padding:18px 22px 14px}
 
-  /* header */
   header{display:flex;align-items:center;justify-content:space-between;
     padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--edge)}
   .brand{display:flex;align-items:baseline;gap:14px}
@@ -34,10 +33,8 @@
     animation:pulse 2.4s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
 
-  /* main grid: left visualizer + right section panels */
   main{flex:1;display:grid;grid-template-columns:330px 1fr;gap:18px;min-height:0}
 
-  /* visualizer */
   .viz{position:relative;border:1px solid var(--edge);border-radius:14px;
     background:linear-gradient(180deg,var(--panel2),#0c1016);overflow:hidden;
     display:flex;flex-direction:column}
@@ -48,7 +45,6 @@
     justify-content:space-between;font-size:10px;letter-spacing:.12em;color:var(--accent2);
     text-transform:uppercase;font-variant-numeric:tabular-nums}
 
-  /* right column */
   .sections{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;
     gap:14px;min-height:0}
   .sec{border:1px solid var(--edge);border-radius:14px;background:var(--panel);
@@ -60,7 +56,6 @@
   .sec-title .accent{color:var(--accent)}
   .sec-knobs{flex:1;display:flex;align-items:center;justify-content:space-around;gap:4px}
 
-  /* toggle switch */
   .sw{position:relative;width:38px;height:20px;border-radius:11px;background:var(--track);
     border:1px solid var(--edge);cursor:pointer;transition:background .18s}
   .sw .nub{position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;
@@ -69,7 +64,6 @@
   .sw.on .nub{transform:translateX(18px);background:var(--accent);
     box-shadow:0 0 10px var(--accent)}
 
-  /* knob */
   .cell{display:flex;flex-direction:column;align-items:center;gap:7px}
   .knob{position:relative;width:62px;height:62px;cursor:ns-resize;touch-action:none}
   .knob svg{display:block;overflow:visible}
@@ -91,11 +85,11 @@
         <div class="wordmark">Fagal Plugins</div>
         <div class="product">Space</div>
       </div>
-      <div class="tagline">multi-section reverb</div>
+      <div class="tagline">algorithmic reverb</div>
     </div>
     <div class="hdr-right">
-      <div class="badge"><span class="livedot"></span>algorithmic · grain · shimmer · convolution</div>
-      <div class="badge">v2.0</div>
+      <div class="badge"><span class="livedot"></span>8 combs · 4 allpass · optional mod / diff / early</div>
+      <div class="badge">v2.0.2</div>
     </div>
   </header>
 
@@ -104,8 +98,8 @@
       <div class="vlabel">Decay Field</div>
       <canvas id="viz"></canvas>
       <div class="vstats">
-        <span id="st-size">SIZE 50%</span>
-        <span id="st-decay">DECAY 50%</span>
+        <span id="st-size">SIZE 55%</span>
+        <span id="st-decay">DECAY 55%</span>
         <span id="st-mix">MIX 33%</span>
       </div>
     </div>
@@ -122,39 +116,46 @@
 <script>
 /* ---- CASC UI <-> DSP bridge (forward-compatible shim) ---- */
 const casc = window.casc || (window.casc = {
-  _subs:[], _vals:{}, 
+  _subs:[], _vals:{},
   setParam(id,v){this._vals[id]=v;},
   getParam(id){ return (id in this._vals) ? this._vals[id] : (DEF[id]??0); },
   subscribe(cb){this._subs.push(cb)}
 });
 
-/* defaults indexed by id (must match manifest) */
-const DEF = [0.5,0.5,0.5,1.0,0.4,0.3,0.25,0.5,0.1,0.8,1,1,1,1,0.33];
-
-/* live param cache for visualizer */
+/* defaults indexed by id (must match manifest, 14 params) */
+const DEF = [0.55,0.55,0.40,1.00,0.15,0.75,0.30,0.20,0.40,0.45,1,1,1,0.33];
 const STATE = DEF.slice();
 
 const fmtPct = v=>Math.round(v*100)+"%";
 
-/* section definitions: each has a toggle id + knob params */
+/* section definitions: each has a toggle id + knob params.
+ *   algorithmic (always on) — size, decay, damping, width
+ *   modulation (toggle)      — mod rate, mod depth
+ *   diffusion (toggle)       — diffusion
+ *   early (toggle)           — early level
+ *   output                   — low cut, high cut, mix
+ * The "Output" panel has no toggle (always on). */
 const SECTIONS = [
-  { name:["Algo","rithmic"], toggle:10, knobs:[
+  { name:["Algo","rithmic"], toggle:-1, knobs:[
     {id:0,label:"Size",fmt:fmtPct},
     {id:1,label:"Decay",fmt:fmtPct},
     {id:2,label:"Damp",fmt:fmtPct},
     {id:3,label:"Width",fmt:fmtPct},
   ]},
-  { name:["Diffu","sion / Grain"], toggle:11, knobs:[
-    {id:4,label:"Diffusion",fmt:fmtPct},
+  { name:["Modu","lation"], toggle:10, knobs:[
+    {id:6,label:"Rate",fmt:fmtPct},
+    {id:7,label:"Depth",fmt:fmtPct},
   ]},
-  { name:["Modu","lation"], toggle:12, knobs:[
-    {id:5,label:"Rate",fmt:fmtPct},
-    {id:6,label:"Depth",fmt:fmtPct},
+  { name:["Diffu","sion"],   toggle:11, knobs:[
+    {id:8,label:"Amount",fmt:fmtPct},
   ]},
-  { name:["Early","Reflect"], toggle:13, knobs:[
-    {id:7,label:"Level",fmt:fmtPct},
-    {id:8,label:"Low Cut",fmt:fmtPct},
-    {id:9,label:"High Cut",fmt:fmtPct},
+  { name:["Early","Reflect"], toggle:12, knobs:[
+    {id:9,label:"Level",fmt:fmtPct},
+  ]},
+  { name:["Out","put"],       toggle:-1, knobs:[
+    {id:4,label:"Low Cut",fmt:fmtPct},
+    {id:5,label:"Hi Cut",fmt:fmtPct},
+    {id:13,label:"Mix",fmt:fmtPct},
   ]},
 ];
 
@@ -221,6 +222,13 @@ function makeSection(s){
   s.knobs.forEach(k=>knobs.appendChild(makeKnob(k)));
   sec.append(head,knobs);
 
+  if (s.toggle < 0) {
+    /* always-on panel: no switch, no opacity fade */
+    sw.style.opacity = "0.25";
+    sw.style.pointerEvents = "none";
+    return sec;
+  }
+
   let on=casc.getParam(s.toggle)>=0.5; STATE[s.toggle]=on?1:0;
   function applyToggle(push){
     sw.classList.toggle("on",on);
@@ -239,8 +247,6 @@ function makeSection(s){
 const host=document.getElementById("sections");
 SECTIONS.forEach(s=>host.appendChild(makeSection(s)));
 
-/* keep Mix wired even though it lives logically in Output — expose via Early Low/High row already.
-   Add Mix as a knob into the visualizer stats only; bind a hidden control through subscribe. */
 casc.subscribe((id,v)=>{ if(id>=0&&id<STATE.length) STATE[id]=v; });
 
 /* ---------- live visualizer: particulate decay field ---------- */
@@ -272,10 +278,10 @@ function spawn(init){
 function readState(){
   return {
     size:STATE[0], decay:STATE[1], damp:STATE[2], width:STATE[3],
-    diff:STATE[4], rate:STATE[5], depth:STATE[6], early:STATE[7],
-    mix:STATE[14],
-    algoOn:STATE[10]>=0.5, grainOn:STATE[11]>=0.5,
-    modOn:STATE[12]>=0.5, earlyOn:STATE[13]>=0.5
+    lowcut:STATE[4], highc:STATE[5], mrate:STATE[6], mdepth:STATE[7],
+    diff:STATE[8], elev:STATE[9],
+    modOn:STATE[10]>=0.5, grainOn:STATE[11]>=0.5, earlyOn:STATE[12]>=0.5,
+    mix:STATE[13],
   };
 }
 
@@ -283,34 +289,30 @@ let t=0;
 function frame(){
   const w=cv.width,h=cv.height;
   const s=readState();
-  // background fade — longer decay = slower fade (more persistent trails)
+  /* always-on algo drives the core; other layers modulate the field */
   const fade=0.10+(1-s.decay)*0.20;
   ctx.fillStyle=`rgba(12,16,22,${fade})`;
   ctx.fillRect(0,0,w,h);
 
   const cx=w*0.5, cy=h*0.5;
   const maxR=Math.min(w,h)*0.46*(0.45+s.size*0.55);
-  const modWobble=s.modOn? s.depth*0.5 : 0;
-  const modFreq=0.4+s.rate*4.0;
+  const modWobble=s.modOn? s.mdepth*0.5 : 0;
+  const modFreq=0.4+s.mrate*4.0;
 
-  // early reflection ripple rings
   if(s.earlyOn){
     ctx.lineWidth=devicePixelRatio;
     for(let k=0;k<5;k++){
       const phase=(t*0.012*s.size*2+k/5)%1;
       const rr=phase*maxR*1.05;
-      const a=(1-phase)*s.early*0.5;
+      const a=(1-phase)*s.elev*0.5;
       ctx.strokeStyle=`rgba(90,209,200,${a})`;
       ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);ctx.stroke();
     }
   }
 
-  // particulate tail
-  const density = s.algoOn ? 1 : 0.25;
   const grainSpread = 0.4 + s.diff*0.9;
   for(let i=0;i<N;i++){
     const p=parts[i];
-    // advance radius outward; decay controls how far/long it lives
     p.r += (0.0009+ p.speed*0.0016*s.size)* (0.6+s.decay*0.8);
     p.life -= 0.004*(1.3 - s.decay);
     p.ang += (p.seed-0.5)*0.02*grainSpread;
@@ -322,21 +324,18 @@ function frame(){
     const x=cx+Math.cos(p.ang)*rad*spreadW;
     const y=cy+Math.sin(p.ang)*rad;
 
-    const alpha = p.life * (s.mix*0.5+0.5) * (s.algoOn?1:0.4);
-    const sz = (devicePixelRatio)*(0.6+ (1-p.r)*2.2*grainSpread) * density;
-    // damping shifts color toward darker/cooler as it ages
+    const alpha = p.life * (s.mix*0.5+0.5) * (s.grainOn?1:0.5);
+    const sz = (devicePixelRatio)*(0.6+ (1-p.r)*2.2*grainSpread);
     const warm = 1 - s.damp*0.4;
     ctx.fillStyle=`rgba(${Math.round(90*warm+30)},${Math.round(209*warm)},${Math.round(200*warm)},${alpha*0.85})`;
     ctx.beginPath();ctx.arc(x,y,sz,0,Math.PI*2);ctx.fill();
   }
 
-  // central core glow scaled by mix
   const g=ctx.createRadialGradient(cx,cy,0,cx,cy,maxR*0.4);
   g.addColorStop(0,`rgba(90,209,200,${0.10+s.mix*0.25})`);
   g.addColorStop(1,"rgba(90,209,200,0)");
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,maxR*0.4,0,Math.PI*2);ctx.fill();
 
-  // stats
   document.getElementById("st-size").textContent="SIZE "+Math.round(s.size*100)+"%";
   document.getElementById("st-decay").textContent="DECAY "+Math.round(s.decay*100)+"%";
   document.getElementById("st-mix").textContent="MIX "+Math.round(s.mix*100)+"%";
@@ -347,15 +346,15 @@ function frame(){
 }
 requestAnimationFrame(frame);
 
-/* live audio: adds no-op shim + meter helper, then overlays a real waveform
- * onto the existing visualisation canvas on every frame. */
+/* live audio meter overlay: host pushes a Float32Array on every UI tick
+ * (see sdk: casc._latestMeter / onMeterFrame).  We copy into a private buf
+ * and overlay a thin waveform onto the visualizer canvas. */
 if (typeof casc.getMeter !== 'function') {
   casc.getMeter = function(){}; casc.onMeter = function(){};
 }
 const la = (function(cv){
   const ctx = cv.getContext('2d');
   let buf = new Float32Array(0);
-  /* host pushes casc._latestMeter (Float32Array) on every UI tick */
   if (casc.onMeterFrame) casc.onMeterFrame((arr) => {
     if (!arr || arr.length < 2) return;
     if (arr.length > buf.length) buf = new Float32Array(arr);
@@ -368,7 +367,7 @@ const la = (function(cv){
       if (!w||!h||frames<2) return;
       ctx.save();
       ctx.globalAlpha = alpha!=null?alpha:0.9;
-      ctx.strokeStyle = color||'#5fffb0';
+      ctx.strokeStyle = color||'#9ff0e8';
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       for (let x=0;x<w;x++) {
@@ -380,11 +379,6 @@ const la = (function(cv){
       }
       ctx.stroke();
       ctx.restore();
-    },
-    peak: () => {
-      let mx = 0;
-      for (let i=0;i<buf.length;i++){ const a=buf[i]<0?-buf[i]:buf[i]; if(a>mx) mx=a; }
-      return mx;
     }
   };
 })();

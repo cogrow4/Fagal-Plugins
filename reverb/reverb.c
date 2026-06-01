@@ -1,108 +1,107 @@
 /*
- * reverb.c — CASC plugin: Fagal Space (multi-section reverb)
+ * reverb.c — CASC plugin: Fagal Space (algorithmic reverb, rewritten)
  *
- * An expansive, Spectral-Audio-"Space"-style reverb with four independently
- * toggleable sections, all running into a shared wet bus:
+ * Simple, clean algorithmic reverb based on Freeverb's well-known topology:
  *
- *   Algorithmic   — classic Freeverb topology: 8 damped parallel combs + 4
- *                   series allpass per channel, with stereo spread.
- *   Diffusion/Grain — extra series allpass diffusion stages on the wet path,
- *                   driven by the Diffusion param (denser, smoother tail).
- *   Modulation/Shimmer — slow LFOs that modulate fractional comb delay reads,
- *                   producing chorused/shimmering motion (ModRate/ModDepth).
- *   Early Reflections — a small tapped multi-delay bank (convolution-style),
- *                   summed in before the late tail (EarlyLevel).
+ *   per channel:  8 lowpass-feedback comb filters (parallel)
+ *               + 4 allpass filters (series)
  *
- * Wet path is shaped by a one-pole LowCut (high-pass) and HighCut (low-pass).
+ * Freeverb's original tuning is the baseline (input gain 0.015, feedback
+ * ~0.84, damping 0.2..0.5), then layered on top in a careful order:
+ *
+ *   LAYER 1 (always on):    core Freeverb tail (8 combs + 4 allpasses)
+ *   LAYER 2 (toggleable):   modulation - small LFO detunes the combs,
+ *                            producing chorused / shimmering motion
+ *   LAYER 3 (toggleable):   diffusion - 4 extra series allpasses smooth
+ *                            the comb hash into a denser, more smeared tail
+ *   LAYER 4 (toggleable):   early reflections - 8 tapped delays
+ *                            shaped to read like a room impulse
+ *
+ * Plus: wet-path high-cut (low-pass) and low-cut (high-pass) for tone.
+ *
+ * Critical: the output goes through a hard brick-wall ceiling at +/- 0.95
+ * so runaway feedback can never escape the plugin. (Previous attempts
+ * at "soft" Pade-tanh ceilings diverged for large inputs.)
  *
  * Build:
  *   clang --target=wasm32 -O3 -nostdlib -Wl,--no-entry -Wl,--export-dynamic \
  *         reverb.c -o dsp.wasm
  *
  * Params (normalised 0..1):
- *   0  Size        room size / comb feedback
- *   1  Decay       extra tail feedback (long ringout)
+ *   0  Size        room size (comb delay length & feedback)
+ *   1  Decay       tail length (extra feedback beyond baseline)
  *   2  Damping     high-frequency damping in the combs
  *   3  Width       stereo width of the wet signal
- *   4  Diffusion   amount of extra allpass diffusion (grain density)
- *   5  ModRate     modulation LFO rate
- *   6  ModDepth    modulation depth (delay-line vibrato / shimmer)
- *   7  EarlyLevel  level of the early-reflection tap bank
- *   8  LowCut      wet-path high-pass cutoff (removes low rumble)
- *   9  HighCut     wet-path low-pass cutoff (tames highs)
- *   10 AlgoOn      toggle: late algorithmic tail on/off
- *   11 GrainOn     toggle: diffusion/grain stages on/off
- *   12 ModOn       toggle: modulation/shimmer on/off
- *   13 EarlyOn     toggle: early reflections on/off
- *   14 Mix         dry/wet
+ *   4  LowCut      wet-path high-pass cutoff (removes low rumble)
+ *   5  HighCut     wet-path low-pass cutoff (tames highs)
+ *   6  ModRate     modulation LFO rate
+ *   7  ModDepth    modulation depth (delay-line vibrato)
+ *   8  Diffusion   amount of extra allpass diffusion
+ *   9  EarlyLevel  level of the early-reflection tap bank
+ *   10 ModOn       toggle: modulation layer on/off
+ *   11 GrainOn     toggle: diffusion layer on/off
+ *   12 EarlyOn     toggle: early reflections on/off
+ *   13 Mix         dry/wet
  */
 #include <stdint.h>
 #include "../_shared/meter_ring.h"
 
-#define NUM_PARAMS 15
+#define NUM_PARAMS 14
 
 /* ----- minimal math (no libc) ----- */
 static inline float clampf(float x, float lo, float hi) {
     return x < lo ? lo : (x > hi ? hi : x);
 }
 
-/* Fast sine approximation (Bhaskara-style), input in radians, range-reduced. */
 static const float TWO_PI = 6.28318530718f;
 static const float PI_F   = 3.14159265359f;
 static inline float fast_sin(float x) {
-    /* reduce to [-pi, pi] */
     while (x >  PI_F) x -= TWO_PI;
     while (x < -PI_F) x += TWO_PI;
-    /* Bhaskara I approximation */
     float ax = x < 0 ? -x : x;
     float num = 16.0f * x * (PI_F - ax);
     float den = 5.0f * PI_F * PI_F - 4.0f * ax * (PI_F - ax);
     return num / den;
 }
 
-/* Hard brick-wall ceiling. The previous Pade-based "soft_ceiling" was
- * a rational approximation of tanh(x) that DIVERGES for large x, so it
- * let peaks well past the intended ceiling — the symptom was the reverb
- * sounding like heavy machinery and clipping the speakers on silence.
- * A plain hard clip with a 0.95 headroom is the only reliable way to
- * guarantee a strict output bound; the knee is only felt on transients
- * already deep into the red, which is exactly when you want a guard. */
+/* Hard brick-wall ceiling. */
 static inline float hard_ceiling(float x, float ceiling) {
     if (x >  ceiling) return  ceiling;
     if (x < -ceiling) return -ceiling;
     return x;
 }
 
-/* Freeverb tuning constants (samples @ 44.1kHz). Scaled by SR at reset. */
+/* ----- Freeverb topology constants ----- */
 #define NUM_COMBS    8
 #define NUM_ALLPASS  4
-#define NUM_DIFFUSE  4   /* extra diffusion/grain allpass stages */
-#define NUM_EARLY    8   /* early-reflection taps */
+#define NUM_DIFFUSE  4    /* extra diffusion allpasses */
+#define NUM_EARLY    8    /* early-reflection taps */
 #define STEREO_SPREAD 23
 
+/* Comb tunings at 44.1kHz (Freeverb's published values). */
 static const int comb_tuning[NUM_COMBS] = {
     1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617
 };
+/* Allpass tunings at 44.1kHz (Freeverb's published values). */
 static const int allpass_tuning[NUM_ALLPASS] = { 556, 441, 341, 225 };
+/* Extra diffusion allpass tunings (shorter, denser). */
 static const int diffuse_tuning[NUM_DIFFUSE] = { 167, 191, 127, 97 };
+/* Early reflection taps and gains (small-room profile). */
+static const int   early_tap[NUM_EARLY]    = { 113, 277, 421, 587, 743, 919, 1117, 1361 };
+static const float early_gain[NUM_EARLY]   = { 0.90f, 0.78f, 0.67f, 0.58f, 0.49f, 0.41f, 0.34f, 0.27f };
 
-/* Early reflection taps (samples @44.1k) and gains. */
-static const int   early_tap[NUM_EARLY] = { 113, 277, 421, 587, 743, 919, 1117, 1361 };
-static const float early_gain[NUM_EARLY] = {
-    0.90f, 0.78f, 0.67f, 0.58f, 0.49f, 0.41f, 0.34f, 0.27f
-};
-
-/* Max buffer sizes (largest tuning + spread + mod headroom for high SR). */
+/* Buffer sizes (largest tuning + spread + a little headroom for high SR). */
 #define COMB_MAX     3600
 #define ALLPASS_MAX  1400
 #define DIFFUSE_MAX   600
 #define EARLY_MAX    3200
 
+/* ----- structures ----- */
 typedef struct {
     float buf[COMB_MAX];
     int   size;
     int   idx;
-    float filterstore; /* lowpass state for damping */
+    float filterstore; /* one-pole LP state for damping */
 } Comb;
 
 typedef struct {
@@ -119,7 +118,7 @@ typedef struct {
 
 typedef struct {
     float buf[EARLY_MAX];
-    int   size;       /* ring length (>= max tap) */
+    int   size;
     int   idx;
     int   tap[NUM_EARLY];
 } Early;
@@ -132,7 +131,7 @@ typedef struct {
 
     /* wet-path filter states (per channel) */
     float lpL, lpR;   /* high-cut (low-pass) one-pole state */
-    float hpL, hpR;   /* low-cut  (high-pass) one-pole state */
+    float hpL, hpR;   /* low-cut  (high-pass) one-pole tracker */
 
     /* modulation LFO phases */
     float lfo1, lfo2;
@@ -142,7 +141,7 @@ typedef struct {
     int   meter_idx;
     int   meter_filled;
 
-    /* normalised params (id order) */
+    /* params */
     float p[NUM_PARAMS];
 
     double sample_rate;
@@ -155,7 +154,7 @@ static Reverb g_inst[MAX_INSTANCES];
 static int g_next = 0;
 
 /* ----- helpers ----- */
-static void buf_clear(float* b, int n) { for (int i=0;i<n;i++) b[i]=0.0f; }
+static void buf_clear(float* b, int n) { for (int i = 0; i < n; i++) b[i] = 0.0f; }
 
 static int scale_len(int base, double sr) {
     int n = (int)((double)base * sr / 44100.0 + 0.5);
@@ -164,7 +163,8 @@ static int scale_len(int base, double sr) {
 
 static void reverb_setup(Reverb* r, double sr) {
     r->sample_rate = sr;
-    for (int i=0;i<NUM_COMBS;i++) {
+    /* combs: stereo spread = STEREO_SPREAD samples */
+    for (int i = 0; i < NUM_COMBS; i++) {
         int sL = scale_len(comb_tuning[i], sr);
         int sR = scale_len(comb_tuning[i] + STEREO_SPREAD, sr);
         if (sL > COMB_MAX) sL = COMB_MAX;
@@ -174,7 +174,8 @@ static void reverb_setup(Reverb* r, double sr) {
         buf_clear(r->combL[i].buf, sL);
         buf_clear(r->combR[i].buf, sR);
     }
-    for (int i=0;i<NUM_ALLPASS;i++) {
+    /* allpasses */
+    for (int i = 0; i < NUM_ALLPASS; i++) {
         int sL = scale_len(allpass_tuning[i], sr);
         int sR = scale_len(allpass_tuning[i] + STEREO_SPREAD, sr);
         if (sL > ALLPASS_MAX) sL = ALLPASS_MAX;
@@ -184,7 +185,8 @@ static void reverb_setup(Reverb* r, double sr) {
         buf_clear(r->apL[i].buf, sL);
         buf_clear(r->apR[i].buf, sR);
     }
-    for (int i=0;i<NUM_DIFFUSE;i++) {
+    /* diffusion */
+    for (int i = 0; i < NUM_DIFFUSE; i++) {
         int sL = scale_len(diffuse_tuning[i], sr);
         int sR = scale_len(diffuse_tuning[i] + 13, sr);
         if (sL > DIFFUSE_MAX) sL = DIFFUSE_MAX;
@@ -194,33 +196,33 @@ static void reverb_setup(Reverb* r, double sr) {
         buf_clear(r->dfL[i].buf, sL);
         buf_clear(r->dfR[i].buf, sR);
     }
-    /* early reflection ring + taps */
-    int er_len = scale_len(early_tap[NUM_EARLY-1] + 64, sr);
+    /* early reflections */
+    int er_len = scale_len(early_tap[NUM_EARLY - 1] + 64, sr);
     if (er_len > EARLY_MAX) er_len = EARLY_MAX;
     r->earL.size = er_len; r->earL.idx = 0; buf_clear(r->earL.buf, er_len);
     r->earR.size = er_len; r->earR.idx = 0; buf_clear(r->earR.buf, er_len);
-    for (int i=0;i<NUM_EARLY;i++) {
+    for (int i = 0; i < NUM_EARLY; i++) {
         int tL = scale_len(early_tap[i], sr);
         int tR = scale_len(early_tap[i] + STEREO_SPREAD, sr);
-        if (tL >= er_len) tL = er_len-1;
-        if (tR >= er_len) tR = er_len-1;
+        if (tL >= er_len) tL = er_len - 1;
+        if (tR >= er_len) tR = er_len - 1;
         r->earL.tap[i] = tL;
         r->earR.tap[i] = tR;
     }
     r->lpL = r->lpR = 0.0f;
     r->hpL = r->hpR = 0.0f;
     r->lfo1 = 0.0f;
-    r->lfo2 = 1.7f; /* offset second LFO */
+    r->lfo2 = 1.7f;
     meter_ring_clear(r->meter_buf);
     r->meter_idx = 0;
     r->meter_filled = 0;
 }
 
-/* comb with fractional (modulated) read tap. mod = fractional sample offset. */
+/* Comb with fractional (modulated) read tap.
+ * `mod` is a fractional sample offset to interpolate by. */
 static inline float comb_process_mod(Comb* c, float in, float feedback,
                                      float damp, float mod) {
     int size = c->size;
-    /* read position with negative modulation offset, fractional */
     float rp = (float)c->idx - mod;
     while (rp < 0.0f) rp += (float)size;
     int i0 = (int)rp;
@@ -235,6 +237,7 @@ static inline float comb_process_mod(Comb* c, float in, float feedback,
     return out;
 }
 
+/* Schroeder allpass: out = -in + buf; buf = in + out * g */
 static inline float allpass_process(Allpass* a, float in) {
     float bufout = a->buf[a->idx];
     float out = -in + bufout;
@@ -243,6 +246,7 @@ static inline float allpass_process(Allpass* a, float in) {
     return out;
 }
 
+/* Diffusion allpass (slightly higher gain than standard Schroeder). */
 static inline float diffuse_process(Diffuse* d, float in, float g) {
     float bufout = d->buf[d->idx];
     float out = -in + bufout;
@@ -251,7 +255,6 @@ static inline float diffuse_process(Diffuse* d, float in, float g) {
     return out;
 }
 
-/* tap an early-reflection ring */
 static inline float early_tap_read(Early* e, int tap) {
     int p = e->idx - tap;
     if (p < 0) p += e->size;
@@ -268,22 +271,21 @@ int32_t dsp_create(double sample_rate, int32_t max_block_size) {
     if (g_next >= MAX_INSTANCES) return -1;
     int h = g_next++;
     Reverb* r = &g_inst[h];
-    /* defaults (id order) */
-    r->p[0]=0.5f;  /* Size      */
-    r->p[1]=0.5f;  /* Decay     */
-    r->p[2]=0.5f;  /* Damping   */
-    r->p[3]=1.0f;  /* Width     */
-    r->p[4]=0.4f;  /* Diffusion */
-    r->p[5]=0.3f;  /* ModRate   */
-    r->p[6]=0.25f; /* ModDepth  */
-    r->p[7]=0.5f;  /* EarlyLevel*/
-    r->p[8]=0.1f;  /* LowCut    */
-    r->p[9]=0.8f;  /* HighCut   */
-    r->p[10]=1.0f; /* AlgoOn    */
-    r->p[11]=1.0f; /* GrainOn   */
-    r->p[12]=1.0f; /* ModOn     */
-    r->p[13]=1.0f; /* EarlyOn   */
-    r->p[14]=0.33f;/* Mix       */
+    /* defaults: a clean, lush hall-ish sound */
+    r->p[0]  = 0.55f;  /* Size     */
+    r->p[1]  = 0.55f;  /* Decay    */
+    r->p[2]  = 0.40f;  /* Damping  */
+    r->p[3]  = 1.00f;  /* Width    */
+    r->p[4]  = 0.15f;  /* LowCut   */
+    r->p[5]  = 0.75f;  /* HighCut  */
+    r->p[6]  = 0.30f;  /* ModRate  */
+    r->p[7]  = 0.20f;  /* ModDepth */
+    r->p[8]  = 0.40f;  /* Diffusion*/
+    r->p[9]  = 0.45f;  /* EarlyLevel */
+    r->p[10] = 1.0f;   /* ModOn    */
+    r->p[11] = 1.0f;   /* GrainOn  */
+    r->p[12] = 1.0f;   /* EarlyOn  */
+    r->p[13] = 0.33f;  /* Mix      */
     r->max_block = max_block_size;
     r->active = 1;
     reverb_setup(r, sample_rate);
@@ -323,103 +325,84 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
     float* out = (float*)(uintptr_t)out_ptr;
 
     /* ----- map params to coefficients ----- */
-    float size   = r->p[0];
-    float decay  = r->p[1];
-    float damp_n = r->p[2];
-    float width  = r->p[3];
-    float diff_n = r->p[4];
-    float mrate  = r->p[5];
-    float mdepth = r->p[6];
-    float elev   = r->p[7];
-    float lowcut = r->p[8];
-    float highc  = r->p[9];
-    float mix    = r->p[14];
+    float size    = r->p[0];
+    float decay   = r->p[1];
+    float damp_n  = r->p[2];
+    float width   = r->p[3];
+    float lowcut  = r->p[4];
+    float highc   = r->p[5];
+    float mrate   = r->p[6];
+    float mdepth  = r->p[7];
+    float diff_n  = r->p[8];
+    float elev    = r->p[9];
+    int   modOn   = r->p[10] >= 0.5f;
+    int   grainOn = r->p[11] >= 0.5f;
+    int   earlyOn = r->p[12] >= 0.5f;
+    float mix     = r->p[13];
 
-    int algoOn  = r->p[10] >= 0.5f;
-    int grainOn = r->p[11] >= 0.5f;
-    int modOn   = r->p[12] >= 0.5f;
-    int earlyOn = r->p[13] >= 0.5f;
+    /* Freeverb-standard: feedback ~0.84 baseline, small range for Size/Decay.
+     * Stay well below the instability limit so the tail cannot run away. */
+    float feedback = 0.70f + size * 0.12f + decay * 0.04f;   /* 0.70 .. ~0.86 */
+    if (feedback > 0.86f) feedback = 0.86f;
+    float damp     = damp_n * 0.4f;                         /* 0 .. 0.4 */
+    float diff_g   = 0.45f + diff_n * 0.30f;                /* 0.45 .. 0.75 */
 
-    /* feedback: Freeverb-standard 0.84 ceiling. Going higher makes the
-     * summed tail ring well past the output ceiling under all 4 sections. */
-    float feedback = 0.70f + size * 0.12f + decay * 0.03f;   /* 0.70 .. ~0.85 */
-    if (feedback > 0.84f) feedback = 0.84f;
-    float damp     = damp_n * 0.4f;             /* 0 .. 0.4 */
-    float diff_g   = 0.45f + diff_n * 0.30f;    /* allpass coef 0.45 .. 0.75 */
-    float wet      = mix;
-    float dry      = 1.0f - mix;
+    float wet = mix;
+    float dry = 1.0f - mix;
 
-    /* stereo wet gains */
+    /* stereo width matrix (M/S) */
     float wet1 = wet * (width * 0.5f + 0.5f);
     float wet2 = wet * ((1.0f - width) * 0.5f);
 
-    const float gain = 0.015f; /* Freeverb input scaling */
+    /* Freeverb input gain (published value). */
+    const float gain = 0.015f;
 
-    /* modulation: LFO increment per sample (0.1 .. ~6 Hz) */
-    float modHz  = 0.1f + mrate * mrate * 5.9f;
-    float lfoInc = TWO_PI * modHz / (float)r->sample_rate;
-    /* mod depth in samples (fractional) */
-    float depthSamp = modOn ? (mdepth * 18.0f) : 0.0f;
+    /* modulation: 0.1 .. ~6 Hz; depth in fractional samples (0..18). */
+    float modHz   = 0.1f + mrate * mrate * 5.9f;
+    float lfoInc  = TWO_PI * modHz / (float)r->sample_rate;
+    float depthS  = modOn ? (mdepth * 18.0f) : 0.0f;
 
-    /* one-pole filter coefficients (cheap, stable) */
-    /* HighCut: low-pass; coef 0=open .. higher cut as highc decreases */
-    float lp_coef = 0.05f + highc * highc * 0.93f;      /* nearer 1 = more open */
-    /* LowCut: high-pass; amount of low removed scales with lowcut */
-    float hp_coef = lowcut * 0.4f;                      /* 0 .. 0.4 */
+    /* wet-path one-pole coefficients */
+    float lp_coef = 0.05f + highc * highc * 0.93f;          /* nearer 1 = more open */
+    float hp_coef = lowcut * 0.4f;                          /* 0 .. 0.4 */
 
-    float er_gain = earlyOn ? (elev * 0.9f) : 0.0f;
+    /* early reflection level (sum-of-8 gains is ~4.4, so scale by 0.225 max). */
+    float er_gain = earlyOn ? (elev * 0.225f) : 0.0f;
 
     for (int n = 0; n < frames; n++) {
         float inL, inR;
         if (in_ch >= 2) { inL = in[n*in_ch + 0]; inR = in[n*in_ch + 1]; }
         else            { inL = in[n*in_ch + 0]; inR = inL; }
 
-        float input = (inL + inR) * gain;
+        /* mono input into the reverb (standard mono->stereo reverb) */
+        float input = (inL + inR) * 0.5f * gain;
 
-        /* ---- modulation LFOs ---- */
+        /* ---- LAYER 1: Freeverb tail (always on) ---- */
+        /* modulation LFOs (advance even when mod is off so phase is stable) */
         float m1 = 0.0f, m2 = 0.0f;
-        if (modOn) {
-            m1 = fast_sin(r->lfo1) * depthSamp;
-            m2 = fast_sin(r->lfo2) * depthSamp;
-            r->lfo1 += lfoInc; if (r->lfo1 > TWO_PI) r->lfo1 -= TWO_PI;
-            r->lfo2 += lfoInc * 0.93f; if (r->lfo2 > TWO_PI) r->lfo2 -= TWO_PI;
-        }
+        m1 = fast_sin(r->lfo1) * depthS;
+        m2 = fast_sin(r->lfo2) * depthS;
+        r->lfo1 += lfoInc; if (r->lfo1 > TWO_PI) r->lfo1 -= TWO_PI;
+        r->lfo2 += lfoInc * 0.93f; if (r->lfo2 > TWO_PI) r->lfo2 -= TWO_PI;
 
-        /* ---- late algorithmic tail (combs + allpass) ---- */
+        /* 8 parallel damped combs, summed */
         float lateL = 0.0f, lateR = 0.0f;
-        if (algoOn) {
-            for (int i = 0; i < NUM_COMBS; i++) {
-                /* alternate combs use the two LFOs for richer motion */
-                float mm = (i & 1) ? m2 : m1;
-                lateL += comb_process_mod(&r->combL[i], input, feedback, damp, mm);
-                lateR += comb_process_mod(&r->combR[i], input, feedback, damp, mm * 0.87f);
-            }
-            for (int i = 0; i < NUM_ALLPASS; i++) {
-                lateL = allpass_process(&r->apL[i], lateL);
-                lateR = allpass_process(&r->apR[i], lateR);
-            }
-        } else {
-            /* keep comb buffers fed so toggling back on is smooth-ish but
-               decayed; still advance allpass write heads with silence */
-            for (int i = 0; i < NUM_COMBS; i++) {
-                comb_process_mod(&r->combL[i], 0.0f, feedback, damp, m1);
-                comb_process_mod(&r->combR[i], 0.0f, feedback, damp, m2);
-            }
+        for (int i = 0; i < NUM_COMBS; i++) {
+            float mm = (i & 1) ? m2 : m1;
+            lateL += comb_process_mod(&r->combL[i], input, feedback, damp, mm);
+            lateR += comb_process_mod(&r->combR[i], input, feedback, damp, mm * 0.87f);
+        }
+        /* 4 series allpasses */
+        for (int i = 0; i < NUM_ALLPASS; i++) {
+            lateL = allpass_process(&r->apL[i], lateL);
+            lateR = allpass_process(&r->apR[i], lateR);
         }
 
-        /* ---- diffusion / grain stages ---- */
-        if (grainOn) {
-            for (int i = 0; i < NUM_DIFFUSE; i++) {
-                lateL = diffuse_process(&r->dfL[i], lateL, diff_g);
-                lateR = diffuse_process(&r->dfR[i], lateR, diff_g);
-            }
-        }
-
-        /* ---- early reflections (tapped delay bank) ---- */
-        float erL = 0.0f, erR = 0.0f;
-        /* always advance the ER ring so taps stay time-aligned */
+        /* ---- LAYER 4: early reflections (toggleable) ----
+         * Always advance the ring so toggling is smooth. */
         early_write(&r->earL, input);
         early_write(&r->earR, input);
+        float erL = 0.0f, erR = 0.0f;
         if (earlyOn) {
             for (int i = 0; i < NUM_EARLY; i++) {
                 erL += early_tap_read(&r->earL, r->earL.tap[i]) * early_gain[i];
@@ -429,12 +412,20 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
             erR *= er_gain;
         }
 
-        /* combine late tail + early reflections into wet bus */
+        /* ---- LAYER 2: diffusion (toggleable) ---- */
+        if (grainOn) {
+            for (int i = 0; i < NUM_DIFFUSE; i++) {
+                lateL = diffuse_process(&r->dfL[i], lateL, diff_g);
+                lateR = diffuse_process(&r->dfR[i], lateR, diff_g);
+            }
+        }
+
+        /* combine into wet bus */
         float wL = lateL + erL;
         float wR = lateR + erR;
 
-        /* ---- wet-path filtering: LowCut (HP) then HighCut (LP) ---- */
-        /* high-pass: y = x - lp(x) using a low-pass tracker */
+        /* ---- wet-path tone shaping: high-pass then low-pass ---- */
+        /* high-pass: y = x - lp(x) (use the lp state as a low-pass tracker) */
         r->hpL += hp_coef * (wL - r->hpL);
         r->hpR += hp_coef * (wR - r->hpR);
         wL = wL - r->hpL;
@@ -445,14 +436,17 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
         wL = r->lpL;
         wR = r->lpR;
 
-        /* stereo width matrix */
+        /* stereo width (M/S) */
         float wetL = wL * wet1 + wR * wet2;
         float wetR = wR * wet1 + wL * wet2;
 
+        /* ---- mix dry + wet ---- */
         float yL = inL * dry + wetL;
         float yR = inR * dry + wetR;
 
-        /* hard brick-wall ceiling: protects against runaway peaks. */
+        /* ---- hard brick-wall ceiling: the ONLY line of defense. ----
+         * (Replaces a "soft" Pade ceiling that diverged and let peaks
+         * past the limit, producing heavy-machinery artefacts.) */
         yL = hard_ceiling(yL, 0.95f);
         yR = hard_ceiling(yR, 0.95f);
 
@@ -465,6 +459,15 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
 __attribute__((export_name("dsp_get_latency")))
 int32_t dsp_get_latency(int32_t handle) { (void)handle; return 0; }
 
+__attribute__((export_name("dsp_get_tail")))
+int32_t dsp_get_tail(int32_t handle) {
+    if (handle < 0 || handle >= MAX_INSTANCES) return 0;
+    Reverb* r = &g_inst[handle];
+    /* tail grows with size + decay; report up to ~8s worth */
+    float t = 1.0f + r->p[0] * 3.0f + r->p[1] * 4.0f;
+    return (int32_t)(r->sample_rate * (double)t);
+}
+
 __attribute__((export_name("dsp_get_meter")))
 int32_t dsp_get_meter(int32_t handle, int32_t ptr, int32_t max_samples) {
     if (handle < 0 || handle >= MAX_INSTANCES) return 0;
@@ -474,15 +477,6 @@ int32_t dsp_get_meter(int32_t handle, int32_t ptr, int32_t max_samples) {
     float* out = (float*)(uintptr_t)ptr;
     return meter_ring_read(r->meter_buf, r->meter_filled, r->meter_idx,
                            max_samples, out);
-}
-
-__attribute__((export_name("dsp_get_tail")))
-int32_t dsp_get_tail(int32_t handle) {
-    if (handle < 0 || handle >= MAX_INSTANCES) return 0;
-    Reverb* r = &g_inst[handle];
-    /* tail grows with size + decay; report up to ~8s worth */
-    float t = 1.0f + r->p[0] * 3.0f + r->p[1] * 4.0f;
-    return (int32_t)(r->sample_rate * (double)t);
 }
 
 /* ----- state: store all NUM_PARAMS normalised params in id order ----- */
