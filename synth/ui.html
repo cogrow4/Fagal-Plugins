@@ -11,52 +11,53 @@
   }
   *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
   html,body{margin:0;height:100%;width:100%;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
     background:radial-gradient(160% 120% at 50% -10%,#0e1d18 0%,var(--bg) 60%);
     color:var(--text);overflow:hidden}
   .wrap{height:100%;display:flex;flex-direction:column;padding:12px 16px 10px;gap:8px}
 
-  header{display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;
+  header{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:6px;
     border-bottom:1px solid var(--edge)}
   .wordmark{font-size:10px;font-weight:700;letter-spacing:.42em;text-transform:uppercase;color:var(--accent)}
-  .product{font-size:22px;font-weight:800;letter-spacing:.10em}
+  .product{font-size:22px;font-weight:800;letter-spacing:.10em;margin-top:2px}
   .product span{color:var(--accent)}
   .subp{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:right;line-height:1.4}
   .subp b{color:var(--accent2);font-weight:600}
 
-  main{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
-  .row{display:grid;gap:8px}
-  .row.s1{grid-template-columns:1fr}
-  .row.s2{grid-template-columns:1fr 1fr}
-  .row.s3{grid-template-columns:repeat(3,1fr)}
-  .row.s4{grid-template-columns:repeat(4,1fr)}
-  .row.s5{grid-template-columns:repeat(5,1fr)}
+  main{flex:1;display:grid;gap:8px;min-height:0;
+    grid-template-columns: 1.1fr 1.1fr 1.1fr 0.7fr;
+    grid-template-rows: auto 1fr 1fr 1fr;
+    grid-template-areas:
+      "osc1 osc2 flt lfo"
+      "sub  mix  flt lfo"
+      "amp  mod  flt arp"
+      "fx   out  flt arp";
+  }
 
   .panel{border:1px solid var(--edge);border-radius:10px;background:var(--panel);
-    padding:9px 10px;display:flex;flex-direction:column;min-height:0;min-width:0}
-  .p-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    padding:9px 10px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+  .p-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-shrink:0}
   .p-title h3{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);
     margin:0;font-weight:700}
-  .p-title .sub{color:var(--muted);font-weight:500;margin-left:6px;font-size:8.5px;letter-spacing:.16em}
+  .p-title h3 .sub{color:var(--muted);font-weight:500;margin-left:6px;font-size:8.5px;letter-spacing:.16em}
   .p-title .tag{font-size:8.5px;color:var(--muted);letter-spacing:.16em;text-transform:uppercase}
 
   .knobrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-around;
     gap:6px 4px;flex:1;align-content:center;min-height:0}
-  .cell{display:flex;flex-direction:column;align-items:center;gap:4px}
-  .knob{position:relative;width:46px;height:46px;cursor:ns-resize;touch-action:none}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:48px}
+  .knob{position:relative;width:46px;height:46px;cursor:ns-resize;touch-action:none;flex-shrink:0}
   .knob svg{display:block;overflow:visible}
-  .knob .cap{filter:drop-shadow(0 2px 5px rgba(0,0,0,.5))}
-  .label{font-size:8px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted)}
+  .label{font-size:7.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted);text-align:center}
   .val{font-size:8.5px;font-variant-numeric:tabular-nums;color:var(--text);
     background:var(--panel2);border:1px solid var(--edge);border-radius:3px;
     padding:1px 4px;min-width:34px;text-align:center}
 
-  .pills{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px;justify-content:center}
+  .pills{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px;justify-content:center;flex-shrink:0}
   .pills button{background:var(--panel2);border:1px solid var(--edge);color:var(--muted);
     font-size:8px;letter-spacing:.10em;text-transform:uppercase;padding:2px 5px;border-radius:4px;
-    cursor:pointer;transition:.15s;font-weight:600}
+    cursor:pointer;font-weight:600}
   .pills button.on{background:linear-gradient(180deg,var(--accent2),#186047);
-    color:#fff;border-color:var(--accent);box-shadow:0 0 6px rgba(95,255,176,.25)}
+    color:#fff;border-color:var(--accent)}
 
   .tog{display:flex;align-items:center;gap:5px;cursor:pointer}
   .sw{width:30px;height:16px;border-radius:9px;background:var(--panel2);
@@ -66,8 +67,18 @@
   .sw.on{background:var(--accent2);border-color:var(--accent)}
   .sw.on .nub{left:15px;background:var(--accent)}
 
+  .p-osc1{grid-area:osc1} .p-osc2{grid-area:osc2}
+  .p-sub {grid-area:sub}  .p-mix {grid-area:mix}
+  .p-flt {grid-area:flt}  .p-lfo {grid-area:lfo}
+  .p-amp {grid-area:amp}  .p-mod {grid-area:mod}
+  .p-arp {grid-area:arp}  .p-fx  {grid-area:fx} .p-out{grid-area:out}
+
+  .meter-dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 6px var(--accent);vertical-align:middle;margin-right:4px}
+  .meter-dot.silent{background:#3a424e;box-shadow:none}
+
   footer{display:flex;justify-content:space-between;align-items:center;
-    padding-top:5px;border-top:1px solid var(--edge)}
+    padding-top:5px;border-top:1px solid var(--edge);flex-shrink:0}
   .hint{font-size:8.5px;color:var(--muted)}
   .badge{font-size:8.5px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
 </style>
@@ -83,79 +94,78 @@
   </header>
 
   <main>
-    <!-- OSCILLATORS -->
-    <div class="panel">
-      <div class="p-title"><h3>Oscillators <span class="sub">osc1 · osc2 · sub · noise</span></h3><span class="tag">4 wave</span></div>
-      <div class="row s2" style="flex:1;min-height:0">
-        <div style="display:flex;flex-direction:column;min-height:0;gap:4px">
-          <div class="pills" id="osc1Pills">
-            <button data-w="0">Sine</button><button data-w="1">Saw</button>
-            <button data-w="2">Sqr</button><button data-w="3">Tri</button>
-          </div>
-          <div class="knobrow" id="osc1Knobs" style="flex:1"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;min-height:0;gap:4px">
-          <div class="pills" id="osc2Pills">
-            <button data-w="0">Sine</button><button data-w="1">Saw</button>
-            <button data-w="2">Sqr</button><button data-w="3">Tri</button>
-          </div>
-          <div class="knobrow" id="osc2Knobs" style="flex:1"></div>
-        </div>
+    <div class="panel p-osc1">
+      <div class="p-title"><h3>Osc 1</h3><span class="tag">4 wave</span></div>
+      <div class="pills" id="osc1Pills">
+        <button data-w="0">Sine</button><button data-w="1">Saw</button>
+        <button data-w="2">Sqr</button><button data-w="3">Tri</button>
       </div>
+      <div class="knobrow" id="osc1Knobs"></div>
     </div>
 
-    <!-- FILTER + LFOs -->
-    <div class="row s2" style="flex:1;min-height:0">
-      <div class="panel">
-        <div class="p-title">
-          <h3>Filter <span class="sub">svf</span></h3>
-          <div class="pills" id="filtPills">
-            <button data-t="0">LP</button><button data-t="1">HP</button>
-            <button data-t="2">BP</button><button data-t="3">Notch</button>
-          </div>
-        </div>
-        <div class="knobrow" id="filtKnobs" style="flex:1"></div>
+    <div class="panel p-osc2">
+      <div class="p-title"><h3>Osc 2</h3><span class="tag">4 wave</span></div>
+      <div class="pills" id="osc2Pills">
+        <button data-w="0">Sine</button><button data-w="1">Saw</button>
+        <button data-w="2">Sqr</button><button data-w="3">Tri</button>
       </div>
-      <div class="panel">
-        <div class="p-title"><h3>LFOs <span class="sub">lfo1 → cutoff · lfo2 → pitch</span></h3><span class="tag">4 params</span></div>
-        <div class="knobrow" id="lfoKnobs" style="flex:1"></div>
-      </div>
+      <div class="knobrow" id="osc2Knobs"></div>
     </div>
 
-    <!-- ENVELOPES -->
-    <div class="row s2" style="flex:1;min-height:0">
-      <div class="panel">
-        <div class="p-title"><h3>Amp Envelope <span class="sub">adsr</span></h3></div>
-        <div class="knobrow" id="ampKnobs" style="flex:1"></div>
-      </div>
-      <div class="panel">
-        <div class="p-title"><h3>Mod Envelope <span class="sub">adsr</span></h3></div>
-        <div class="knobrow" id="modKnobs" style="flex:1"></div>
-      </div>
+    <div class="panel p-sub">
+      <div class="p-title"><h3>Sub &amp; Noise</h3></div>
+      <div class="knobrow" id="subKnobs"></div>
     </div>
 
-    <!-- FX + ARPEGGIATOR + MASTER -->
-    <div class="row s3" style="flex:1;min-height:0">
-      <div class="panel">
-        <div class="p-title"><h3>FX + Master</h3></div>
-        <div class="knobrow" id="fxKnobs" style="flex:1"></div>
-      </div>
-      <div class="panel">
-        <div class="p-title"><h3>Arpeggiator <span class="sub">up · down · up-down · rnd</span></h3></div>
-        <div class="knobrow" id="arpKnobs" style="flex:1"></div>
-      </div>
-      <div class="panel">
-        <div class="p-title"><h3>MIDI</h3><span class="tag">in</span></div>
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;flex:1">
-          <div class="tog" id="arpOnTog"><div class="sw" id="arpSw"><div class="nub"></div></div><span class="label">Arp On</span></div>
-          <div style="font-size:8.5px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase">play keyboard · C3 = 60</div>
+    <div class="panel p-flt">
+      <div class="p-title">
+        <h3>Filter <span class="sub">svf</span></h3>
+        <div class="pills" id="filtPills">
+          <button data-t="0">LP</button><button data-t="1">HP</button>
+          <button data-t="2">BP</button><button data-t="3">Notch</button>
         </div>
       </div>
+      <div class="knobrow" id="filtKnobs"></div>
+    </div>
+
+    <div class="panel p-lfo">
+      <div class="p-title"><h3>LFOs <span class="sub">→cutoff · →pitch</span></h3></div>
+      <div class="knobrow" id="lfoKnobs"></div>
+    </div>
+
+    <div class="panel p-amp">
+      <div class="p-title"><h3>Amp Env</h3></div>
+      <div class="knobrow" id="ampKnobs"></div>
+    </div>
+
+    <div class="panel p-mod">
+      <div class="p-title"><h3>Mod Env</h3></div>
+      <div class="knobrow" id="modKnobs"></div>
+    </div>
+
+    <div class="panel p-fx">
+      <div class="p-title"><h3>FX Bus</h3></div>
+      <div class="knobrow" id="fxKnobs"></div>
+    </div>
+
+    <div class="panel p-mix">
+      <div class="p-title"><h3>MIDI</h3><span class="tag" id="arpTag">arp off</span></div>
+      <div class="knobrow" id="arpKnobs"></div>
+    </div>
+
+    <div class="panel p-out">
+      <div class="p-title"><h3>Output <span id="audLamp" class="tag"><span class="meter-dot silent"></span>silent</span></h3></div>
+      <div class="knobrow" id="outKnobs"></div>
+    </div>
+
+    <div class="panel p-arp">
+      <div class="p-title"><h3>Arp</h3></div>
+      <div class="knobrow" id="arpColKnobs"></div>
     </div>
   </main>
 
   <footer>
-    <div class="hint">drag knob vertically · double-click resets · click pills to switch</div>
+    <div class="hint">drag knob vertically · double-click resets · click pills</div>
     <div class="badge">Fagal · Polymath v2.0</div>
   </footer>
 </div>
@@ -163,32 +173,15 @@
 <script>
 const casc = window.casc || (window.casc = (()=>{
   const state = {};
-  let hostGet = null, hostSet = null;
-  try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.casc) {
-    hostGet = (id) => window.webkit.messageHandlers.casc.postMessage({type:'get',id});
-    hostSet = (id,v) => window.webkit.messageHandlers.casc.postMessage({type:'set',id,value:v});
-  }} catch(e){}
   return {
     _subs: [],
-    setParam(id, v){ state[id]=v; this._subs.forEach(fn=>fn(id,v)); },
+    setParam(id, v){ state[id] = v; this._subs.forEach(fn=>fn(id, v)); },
     getParam(id){ return state[id]; },
-    onChange(fn){ this._subs.push(fn); },
-    commit(id, v){
-      state[id] = v;
-      if (hostSet) hostSet(id, v);
-    }
+    subscribe(fn){ this._subs.push(fn); },
+    onMeterFrame(fn){ this._onMeterFrame = fn; }
   };
 })());
 
-const params = [
-  /* osc1 */ 0,1,2, /* osc2 */ 3,4,5, /* sub/noise */ 6,7,
-  /* filter */ 8,9,10,11,12,
-  /* amp env */ 13,14,15,16,
-  /* mod env */ 17,18,19,20,
-  /* lfos */ 21,22,23,24,
-  /* fx+master */ 25,26,
-  /* arp */ 27,28,29
-];
 const defaults = {
   0:0, 1:0.7, 2:0.5,
   3:0.33, 4:0.6, 5:0.5,
@@ -207,48 +200,60 @@ const stepLabels = {
   10:['LP','HP','BP','Notch'],
   27:['Off','On']
 };
+const paramNames = {
+  0:'Wave', 1:'Level', 2:'Detune',
+  3:'Wave', 4:'Level', 5:'Detune',
+  6:'Sub', 7:'Noise',
+  8:'Cutoff', 9:'Reso', 11:'Drive', 12:'Env Amt',
+  13:'Atk', 14:'Dec', 15:'Sus', 16:'Rel',
+  17:'Atk', 18:'Dec', 19:'Sus', 20:'Rel',
+  21:'LFO1 R', 22:'LFO1 D', 23:'LFO2 R', 24:'LFO2 D',
+  25:'FX Mix', 26:'Master',
+  28:'Rate', 29:'Gate'
+};
 
 function fmtVal(id, v) {
-  if (id === 8) { /* cutoff */
-    const hz = 20 * Math.pow(20000/20, v);
-    return hz < 1000 ? hz.toFixed(0)+' Hz' : (hz/1000).toFixed(2)+' kHz';
+  if (id === 8) {
+    const hz = 20 * Math.pow(1000, v);
+    return hz < 1000 ? hz.toFixed(0)+'Hz' : (hz/1000).toFixed(2)+'k';
   }
-  if (id === 13 || id === 14 || id === 16 || id === 17 || id === 18 || id === 20) {
-    /* time-based */
-    return (v*v*4).toFixed(2)+' s';
-  }
-  if (id === 21 || id === 23 || id === 28) { /* rate */
-    return (0.05 + v*v*15).toFixed(2)+' Hz';
-  }
+  if ([13,14,16,17,18,20].includes(id)) return (v*v*4).toFixed(2)+'s';
+  if ([21,23,28].includes(id)) return (0.05 + v*v*15).toFixed(2)+'Hz';
   if (id === 27) return v < 0.5 ? 'Off' : 'On';
   if (stepMap[id]) {
-    const s = Math.min(stepMap[id]-1, Math.floor(v * stepMap[id] + 0.0001));
+    const s = Math.min(stepMap[id]-1, Math.floor(v*stepMap[id]+0.0001));
     return stepLabels[id][s];
   }
   return (v*100).toFixed(0)+'%';
 }
 
-function makeKnob(id, label) {
+function makeKnob(id) {
   const cell = document.createElement('div'); cell.className = 'cell';
   const k = document.createElement('div'); k.className = 'knob'; k.dataset.id = id;
+  const initial = casc.getParam(id);
+  if (typeof initial !== 'number') {
+    casc.setParam(id, defaults[id]);
+    casc.commit && casc.commit(id, defaults[id]);
+  }
   k.innerHTML = `
     <svg viewBox="0 0 46 46" width="46" height="46">
       <circle cx="23" cy="23" r="18" fill="none" stroke="#1c2530" stroke-width="3"/>
       <circle cx="23" cy="23" r="18" fill="none" stroke="#2da67e" stroke-width="3"
-        stroke-dasharray="${(2*Math.PI*18).toFixed(2)}"
-        stroke-dashoffset="${((1-casc.getParam(id))*2*Math.PI*18*0.75).toFixed(2)}"
+        class="prog" stroke-dasharray="${(2*Math.PI*18).toFixed(2)}"
+        stroke-dashoffset="${((1-(casc.getParam(id)||0))*2*Math.PI*18*0.75).toFixed(2)}"
         transform="rotate(135 23 23)" stroke-linecap="round"/>
-      <g class="cap" transform="rotate(${-135 + casc.getParam(id)*270} 23 23)">
+      <g class="cap" transform="rotate(${-135 + (casc.getParam(id)||0)*270} 23 23)">
         <line x1="23" y1="9" x2="23" y2="14" stroke="#5fffb0" stroke-width="2.5" stroke-linecap="round"/>
       </g>
     </svg>`;
-  const lab = document.createElement('div'); lab.className = 'label'; lab.textContent = label;
-  const val = document.createElement('div'); val.className = 'val'; val.textContent = fmtVal(id, casc.getParam(id));
+  const lab = document.createElement('div'); lab.className = 'label'; lab.textContent = paramNames[id] || ('P'+id);
+  const val = document.createElement('div'); val.className = 'val'; val.textContent = fmtVal(id, casc.getParam(id)||defaults[id]);
   cell.append(k, lab, val);
+
   let startY = 0, startV = 0, dragging = false;
   const onDown = (e) => {
     const pt = e.touches ? e.touches[0] : e;
-    startY = pt.clientY; startV = casc.getParam(id); dragging = true;
+    startY = pt.clientY; startV = casc.getParam(id) || 0; dragging = true;
     e.preventDefault();
   };
   const onMove = (e) => {
@@ -263,7 +268,7 @@ function makeKnob(id, label) {
       v = Math.max(0, Math.min(1, v));
     }
     casc.setParam(id, v);
-    casc.commit(id, v);
+    if (casc.commit) casc.commit(id, v);
   };
   const onUp = () => { dragging = false; };
   k.addEventListener('mousedown', onDown);
@@ -272,85 +277,107 @@ function makeKnob(id, label) {
   window.addEventListener('touchmove', onMove, {passive:false});
   window.addEventListener('mouseup', onUp);
   window.addEventListener('touchend', onUp);
-  k.addEventListener('dblclick', () => { casc.setParam(id, defaults[id]); casc.commit(id, defaults[id]); });
-  casc.onChange((cid, v) => { if (cid === id) val.textContent = fmtVal(id, v); });
+  k.addEventListener('dblclick', () => {
+    casc.setParam(id, defaults[id]);
+    if (casc.commit) casc.commit(id, defaults[id]);
+  });
   return cell;
 }
 
 function paintKnob(k) {
   const id = +k.dataset.id;
   const v = casc.getParam(id);
+  if (typeof v !== 'number') return;
   const dash = (1 - v) * 2 * Math.PI * 18 * 0.75;
   const svg = k.querySelector('svg');
-  svg.querySelector('circle[stroke-dashoffset]').setAttribute('stroke-dashoffset', dash.toFixed(2));
+  if (!svg) return;
+  svg.querySelector('circle.prog').setAttribute('stroke-dashoffset', dash.toFixed(2));
   svg.querySelector('g.cap').setAttribute('transform', `rotate(${-135 + v*270} 23 23)`);
-  /* val cell sibling */
   const val = k.parentElement.querySelector('.val');
   if (val) val.textContent = fmtVal(id, v);
 }
 
-function buildRow(id, ids, labels) {
-  ids.forEach((pid, i) => id.appendChild(makeKnob(pid, labels[i])));
+function buildRow(id, pids) {
+  const root = document.getElementById(id);
+  if (!root) { console.warn('no root for', id); return; }
+  pids.forEach(pid => root.appendChild(makeKnob(pid)));
 }
 
-/* ---- build sections ---- */
-buildRow(document.getElementById('osc1Knobs'), [0,1,2], ['Wave','Level','Detune']);
-buildRow(document.getElementById('osc2Knobs'), [3,4,5], ['Wave','Level','Detune']);
-buildRow(document.getElementById('filtKnobs'), [8,9,11,12], ['Cutoff','Reso','Drive','Env Amt']);
-buildRow(document.getElementById('lfoKnobs'), [21,22,23,24], ['LFO1 Rate','LFO1 Depth','LFO2 Rate','LFO2 Depth']);
-buildRow(document.getElementById('ampKnobs'), [13,14,15,16], ['Attack','Decay','Sustain','Release']);
-buildRow(document.getElementById('modKnobs'), [17,18,19,20], ['Attack','Decay','Sustain','Release']);
-buildRow(document.getElementById('fxKnobs'), [25,26], ['FX Mix','Master']);
-buildRow(document.getElementById('arpKnobs'), [28,29], ['Rate','Gate']);
+buildRow('osc1Knobs', [0,1,2]);
+buildRow('osc2Knobs', [3,4,5]);
+buildRow('subKnobs', [6,7]);
+buildRow('filtKnobs', [8,9,11,12]);
+buildRow('lfoKnobs', [21,22,23,24]);
+buildRow('ampKnobs', [13,14,15,16]);
+buildRow('modKnobs', [17,18,19,20]);
+buildRow('fxKnobs', [25]);
+buildRow('outKnobs', [26]);
+buildRow('arpKnobs', [28,29]);
+buildRow('arpColKnobs', []);  /* kept for grid layout balance */
 
-/* ---- pills (wave / filter type) ---- */
+/* Arp toggle (id 27) lives in the MIDI panel tag */
+const arpTag = document.getElementById('arpTag');
+const paintArp = () => {
+  const on = (casc.getParam(27) || 0) >= 0.5;
+  arpTag.textContent = on ? 'arp on' : 'arp off';
+  arpTag.style.color = on ? 'var(--accent)' : 'var(--muted)';
+};
+arpTag.style.cursor = 'pointer';
+arpTag.addEventListener('click', () => {
+  const cur = (casc.getParam(27) || 0) >= 0.5;
+  const v = cur ? 0 : 1;
+  casc.setParam(27, v);
+  if (casc.commit) casc.commit(27, v);
+  paintArp();
+});
+paintArp();
+
+/* pills */
 function bindPills(containerId, paramId) {
   const cont = document.getElementById(containerId);
+  if (!cont) return;
   const buttons = cont.querySelectorAll('button');
   const paint = () => {
-    const v = casc.getParam(paramId);
+    const v = casc.getParam(paramId) || 0;
     const s = stepMap[paramId] ? Math.min(stepMap[paramId]-1, Math.floor(v*stepMap[paramId]+0.0001)) : 0;
     buttons.forEach((b, i) => b.classList.toggle('on', i === s));
   };
   paint();
   buttons.forEach((b, i) => b.addEventListener('click', () => {
     const v = i / (stepMap[paramId]-1);
-    casc.setParam(paramId, v); casc.commit(paramId, v);
+    casc.setParam(paramId, v);
+    if (casc.commit) casc.commit(paramId, v);
   }));
-  casc.onChange((id) => { if (id === paramId) paint(); });
 }
 bindPills('osc1Pills', 0);
 bindPills('osc2Pills', 3);
 bindPills('filtPills', 10);
 
-/* ---- arp toggle (param 27) ---- */
-const arpSw = document.getElementById('arpSw');
-const paintArp = () => arpSw.classList.toggle('on', casc.getParam(27) >= 0.5);
-paintArp();
-arpSw.parentElement.addEventListener('click', () => {
-  const v = casc.getParam(27) >= 0.5 ? 0 : 1;
-  casc.setParam(27, v); casc.commit(27, v);
-});
-casc.onChange((id) => { if (id === 27) paintArp(); });
-
-/* ---- sub + noise (6,7) need knobs in osc row too ---- */
-/* Insert Sub and Noise into the right column of oscillators row */
-const oscRight = document.getElementById('osc2Knobs');
-oscRight.appendChild(makeKnob(6, 'Sub'));
-oscRight.appendChild(makeKnob(7, 'Noise'));
-
-/* ---- init defaults if state empty ---- */
-Object.keys(defaults).forEach(id => {
-  if (typeof casc.getParam(+id) !== 'number') {
-    casc.setParam(+id, defaults[id]);
-    casc.commit(+id, defaults[id]);
-  }
-});
-
-/* ---- repaint all on state change ---- */
-casc.onChange((id) => {
+/* repaint all on state change */
+casc.subscribe((id) => {
   document.querySelectorAll('.knob').forEach(k => { if (+k.dataset.id === id) paintKnob(k); });
+  if (id === 27) paintArp();
 });
+
+/* audio activity LED (uses pushed meter from host) */
+const lamp = document.getElementById('audLamp');
+let lastLampT = 0;
+if (casc.onMeterFrame) {
+  casc.onMeterFrame((arr) => {
+    if (!arr || arr.length < 2) return;
+    let mx = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const a = arr[i] < 0 ? -arr[i] : arr[i];
+      if (a > mx) mx = a;
+    }
+    const now = performance.now();
+    if (now - lastLampT < 80) return;
+    lastLampT = now;
+    lamp.innerHTML = mx > 0.005
+      ? '<span class="meter-dot"></span>' + (mx > 0.7 ? 'hot' : mx > 0.2 ? 'loud' : 'signal')
+      : '<span class="meter-dot silent"></span>silent';
+  });
+}
 </script>
 </body>
 </html>

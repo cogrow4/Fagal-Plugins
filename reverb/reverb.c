@@ -60,20 +60,17 @@ static inline float fast_sin(float x) {
     return num / den;
 }
 
-/* Soft brick-wall ceiling: tanh-shaped saturation toward +/- 'ceiling'.
- * Keeps signal strictly inside [-ceiling, +ceiling] without hard clipping
- * artefacts, so the reverb tail never trips downstream safety limiters. */
-static inline float soft_ceiling(float x, float ceiling) {
-    if (ceiling <= 0.0f) return 0.0f;
-    /* tanh(x/c) * c is a natural soft clip; falls back to identity below
-     * the knee (x/c < ~0.5) so quiet material is untouched. */
-    float k = x / ceiling;
-    if (k >  1.5f) return  ceiling;
-    if (k < -1.5f) return -ceiling;
-    /* Pade-style tanh approximation: x*(27+x*x)/(27+9*x*x) */
-    float k2 = k * k;
-    float y  = k * (27.0f + k2) / (27.0f + 9.0f * k2);
-    return y * ceiling;
+/* Hard brick-wall ceiling. The previous Pade-based "soft_ceiling" was
+ * a rational approximation of tanh(x) that DIVERGES for large x, so it
+ * let peaks well past the intended ceiling — the symptom was the reverb
+ * sounding like heavy machinery and clipping the speakers on silence.
+ * A plain hard clip with a 0.95 headroom is the only reliable way to
+ * guarantee a strict output bound; the knee is only felt on transients
+ * already deep into the red, which is exactly when you want a guard. */
+static inline float hard_ceiling(float x, float ceiling) {
+    if (x >  ceiling) return  ceiling;
+    if (x < -ceiling) return -ceiling;
+    return x;
 }
 
 /* Freeverb tuning constants (samples @ 44.1kHz). Scaled by SR at reset. */
@@ -343,11 +340,10 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
     int modOn   = r->p[12] >= 0.5f;
     int earlyOn = r->p[13] >= 0.5f;
 
-    /* feedback: Size sets base, Decay extends toward unity.
-     * Capped at 0.92 (well below the runaway point of 0.97+) to keep the
-     * summed tail inside the soft ceiling under all Mix/Section combos. */
-    float feedback = 0.70f + size * 0.18f + decay * 0.05f;   /* 0.70 .. ~0.93 */
-    if (feedback > 0.92f) feedback = 0.92f;
+    /* feedback: Freeverb-standard 0.84 ceiling. Going higher makes the
+     * summed tail ring well past the output ceiling under all 4 sections. */
+    float feedback = 0.70f + size * 0.12f + decay * 0.03f;   /* 0.70 .. ~0.85 */
+    if (feedback > 0.84f) feedback = 0.84f;
     float damp     = damp_n * 0.4f;             /* 0 .. 0.4 */
     float diff_g   = 0.45f + diff_n * 0.30f;    /* allpass coef 0.45 .. 0.75 */
     float wet      = mix;
@@ -357,9 +353,7 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
     float wet1 = wet * (width * 0.5f + 0.5f);
     float wet2 = wet * ((1.0f - width) * 0.5f);
 
-    const float gain = 0.012f; /* input scaling: small enough that 8 combs
-                                * summed (each up to 0.92 feedback) cannot
-                                * exceed the soft ceiling. */
+    const float gain = 0.015f; /* Freeverb input scaling */
 
     /* modulation: LFO increment per sample (0.1 .. ~6 Hz) */
     float modHz  = 0.1f + mrate * mrate * 5.9f;
@@ -458,11 +452,9 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
         float yL = inL * dry + wetL;
         float yR = inR * dry + wetR;
 
-        /* soft brick-wall ceiling: protects against runaway peaks that
-         * would otherwise trip host safety limiters. Inaudible below the
-         * knee (|y| < ~0.5 * ceiling), gentle saturation above. */
-        yL = soft_ceiling(yL, 0.92f);
-        yR = soft_ceiling(yR, 0.92f);
+        /* hard brick-wall ceiling: protects against runaway peaks. */
+        yL = hard_ceiling(yL, 0.95f);
+        yR = hard_ceiling(yR, 0.95f);
 
         if (out_ch >= 2) { out[n*out_ch + 0] = yL; out[n*out_ch + 1] = yR; }
         else             { out[n*out_ch + 0] = (yL + yR) * 0.5f; }

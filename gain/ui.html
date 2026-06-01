@@ -222,22 +222,14 @@ function fit(){
 }
 new ResizeObserver(fit).observe(cv);fit();
 
-/* Real meters driven by casc.getMeter() from the DSP ring buffer */
+/* Real meters driven by casc._latestMeter, pushed by the host on each UI tick */
 let lastT=performance.now();
 let levelL=0, levelR=0, peakHoldL=0, peakHoldR=0, peakHoldTimeL=0, peakHoldTimeR=0;
-let meterScratch = null;
-let meterPending = false;
-const METER_N = 256;  /* frames per request — ~5.3ms @48k, plenty for ballistics */
-function pollMeter(){
-  if (meterPending || !casc.getMeter) return;
-  meterPending = true;
-  if (!meterScratch) meterScratch = new Float32Array(METER_N * 2);
-  casc.getMeter(METER_N);
-}
-if (casc.onMeter) casc.onMeter((req, arr) => {
-  meterPending = false;
+let tgtL = -80, tgtR = -80;
+let lastMeterLen = 0;
+if (casc.onMeterFrame) casc.onMeterFrame((arr) => {
   if (!arr || arr.length < 2) return;
-  /* find peak in this window (rms would be smoother but peak is more honest) */
+  lastMeterLen = arr.length;
   let mxL = 0, mxR = 0;
   for (let i = 0; i < arr.length; i += 2) {
     const a = arr[i]   < 0 ? -arr[i]   : arr[i];
@@ -245,16 +237,12 @@ if (casc.onMeter) casc.onMeter((req, arr) => {
     if (a > mxL) mxL = a;
     if (b > mxR) mxR = b;
   }
-  /* feed ballistics with the peak dBFS of this window */
   if (mxL > 0) mxL = 20 * Math.log10(mxL); else mxL = -80;
   if (mxR > 0) mxR = 20 * Math.log10(mxR); else mxR = -80;
-  if (mxL > tgtL) tgtL = mxL; else tgtL += vuRel * (mxL - tgtL);
-  if (mxR > tgtR) tgtR = mxR; else tgtR += vuRel * (mxR - tgtR);
-  /* peak hold */
+  tgtL = mxL; tgtR = mxR;
   if (tgtL > peakHoldL) { peakHoldL = tgtL; peakHoldTimeL = performance.now(); }
   if (tgtR > peakHoldR) { peakHoldR = tgtR; peakHoldTimeR = performance.now(); }
 });
-let tgtL = -80, tgtR = -80;
 const vuRel = 0.18;
 function draw(now){
   const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
@@ -275,7 +263,7 @@ function draw(now){
   if (now-peakHoldTimeL>1500) peakHoldL += pkRel*(-1.5 - peakHoldL);
   if (now-peakHoldTimeR>1500) peakHoldR += pkRel*(-1.5 - peakHoldR);
 
-  pollMeter();
+  const audText = lastMeterLen > 0 ? "INPUT/OUTPUT" : "no signal";
 
   /* dB scale: -40 .. +6 */
   const dbMin=-40, dbMax=+6;

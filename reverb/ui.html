@@ -342,7 +342,6 @@ function frame(){
   document.getElementById("st-mix").textContent="MIX "+Math.round(s.mix*100)+"%";
 
   t++;
-    la.poll();
   la.draw(undefined, 0.85);
   requestAnimationFrame(frame);
 }
@@ -355,23 +354,22 @@ if (typeof casc.getMeter !== 'function') {
 }
 const la = (function(cv){
   const ctx = cv.getContext('2d');
-  let buf = new Float32Array(512*2);
-  let drawing = false;
-  if (casc.onMeter) casc.onMeter((req, arr) => {
-    const n = (arr.length>>1);
-    if (n*2 > buf.length) buf = new Float32Array(n*2);
-    for (let i=0;i<n*2;i++) buf[i]=arr[i];
+  let buf = new Float32Array(0);
+  /* host pushes casc._latestMeter (Float32Array) on every UI tick */
+  if (casc.onMeterFrame) casc.onMeterFrame((arr) => {
+    if (!arr || arr.length < 2) return;
+    if (arr.length > buf.length) buf = new Float32Array(arr);
+    for (let i=0;i<arr.length;i++) buf[i]=arr[i];
   });
   return {
-    poll: () => { if (!drawing && casc.getMeter) { drawing=true; casc.getMeter(512); setTimeout(()=>drawing=false, 8); } },
     draw: (color, alpha) => {
       const w=cv.clientWidth, h=cv.clientHeight;
       const frames = buf.length>>1;
       if (!w||!h||frames<2) return;
       ctx.save();
-      ctx.globalAlpha = alpha!=null?alpha:0.85;
+      ctx.globalAlpha = alpha!=null?alpha:0.9;
       ctx.strokeStyle = color||'#5fffb0';
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
       for (let x=0;x<w;x++) {
         const f = Math.floor(x/w*frames);
@@ -382,6 +380,11 @@ const la = (function(cv){
       }
       ctx.stroke();
       ctx.restore();
+    },
+    peak: () => {
+      let mx = 0;
+      for (let i=0;i<buf.length;i++){ const a=buf[i]<0?-buf[i]:buf[i]; if(a>mx) mx=a; }
+      return mx;
     }
   };
 })();
