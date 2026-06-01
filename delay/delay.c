@@ -32,6 +32,7 @@
  *   11 Tap2Level   -> level of a second tap @ 0.6667 of main time
  */
 #include <stdint.h>
+#include "../_shared/meter_ring.h"
 
 /* ----- minimal math (no libc) ----- */
 static inline float clampf(float x, float lo, float hi) {
@@ -84,6 +85,11 @@ typedef struct {
     float sTime, sFb, sMix, sTap2;
 
     /* normalised params */
+    /* output ring buffer for UI meters */
+    float meter_buf[METER_BUF];
+    int   meter_idx;
+    int   meter_filled;
+
     float p_time, p_fb, p_mix, p_lowcut, p_highcut;
     float p_modrate, p_moddepth, p_sat, p_width, p_ping, p_freeze, p_tap2;
 
@@ -111,7 +117,10 @@ static void delay_setup(Delay* d, double sr) {
     d->primed = 0;
     buf_clear(d->bufL, DELAY_MAX);
     buf_clear(d->bufR, DELAY_MAX);
-}
+
+    meter_ring_clear(d->meter_buf);
+    d->meter_idx = 0;
+    d->meter_filled = 0;}
 
 static void seed_smoothers(Delay* d) {
     d->sTime = d->p_time;
@@ -351,6 +360,7 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
 
         if (out_ch >= 2) { out[n*out_ch + 0] = yL; out[n*out_ch + 1] = yR; }
         else             { out[n*out_ch + 0] = (yL + yR) * 0.5f; }
+        meter_ring_write(d->meter_buf, &d->meter_idx, &d->meter_filled, yL, yR);
     }
 }
 
@@ -403,3 +413,14 @@ int32_t casc_alloc(int32_t n) {
 }
 __attribute__((export_name("casc_free")))
 void casc_free(int32_t ptr) { (void)ptr; }
+
+__attribute__((export_name("dsp_get_meter")))
+int32_t dsp_get_meter(int32_t handle, int32_t ptr, int32_t max_samples) {
+    if (handle < 0 || handle >= MAX_INSTANCES) return 0;
+    Delay* s = &g_inst[handle];
+    if (max_samples > METER_FRAMES) max_samples = METER_FRAMES;
+    if (max_samples < 1) return 0;
+    float* out = (float*)(uintptr_t)ptr;
+    return meter_ring_read(s->meter_buf, s->meter_filled, s->meter_idx,
+                           max_samples, out);
+}

@@ -29,6 +29,7 @@
  *   8 Mix       dry/wet
  */
 #include <stdint.h>
+#include "../_shared/meter_ring.h"
 
 /* ----- minimal math (no libc) ----- */
 static inline float clampf(float x, float lo, float hi) {
@@ -54,6 +55,11 @@ static inline float soft_ceiling(float x, float c) {
 
 typedef struct {
     /* normalised params */
+    /* output ring buffer for UI meters */
+    float meter_buf[METER_BUF];
+    int   meter_idx;
+    int   meter_filled;
+
     float p_drive, p_bias, p_pretone, p_posttone, p_dyn;
     float p_ceil, p_mode, p_output, p_mix;
 
@@ -77,7 +83,10 @@ static void drive_setup(Drive* d, double sr) {
     d->preL = d->preR = 0.0f;
     d->postL = d->postR = 0.0f;
     d->envL = d->envR = 0.0f;
-}
+
+    meter_ring_clear(d->meter_buf);
+    d->meter_idx = 0;
+    d->meter_filled = 0;}
 
 /* ----- shaper curves (all in -> out, both in (-inf,inf) but bounded near +/-1) ----- */
 
@@ -270,6 +279,10 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
 
         if (out_ch >= 2) { out[n*out_ch + 0] = oL; out[n*out_ch + 1] = oR; }
         else             { out[n*out_ch + 0] = (oL + oR) * 0.5f; }
+
+        if (out_ch >= 2) { out[n*out_ch + 0] = oL; out[n*out_ch + 1] = oR; }
+        else             { out[n*out_ch + 0] = (oL + oR) * 0.5f; }
+        meter_ring_write(d->meter_buf, &d->meter_idx, &d->meter_filled, yL, yR);
     }
 
     d->preL  = preL;  d->preR  = preR;
@@ -319,3 +332,14 @@ int32_t casc_alloc(int32_t n) {
 }
 __attribute__((export_name("casc_free")))
 void casc_free(int32_t ptr) { (void)ptr; }
+
+__attribute__((export_name("dsp_get_meter")))
+int32_t dsp_get_meter(int32_t handle, int32_t ptr, int32_t max_samples) {
+    if (handle < 0 || handle >= MAX_INSTANCES) return 0;
+    Drive* s = &g_inst[handle];
+    if (max_samples > METER_FRAMES) max_samples = METER_FRAMES;
+    if (max_samples < 1) return 0;
+    float* out = (float*)(uintptr_t)ptr;
+    return meter_ring_read(s->meter_buf, s->meter_filled, s->meter_idx,
+                           max_samples, out);
+}

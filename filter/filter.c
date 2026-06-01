@@ -32,6 +32,7 @@
  *   9 Mix       dry/wet
  */
 #include <stdint.h>
+#include "../_shared/meter_ring.h"
 
 static inline float clampf(float x, float lo, float hi){
     return x<lo?lo:(x>hi?hi:x);
@@ -89,6 +90,11 @@ typedef struct {
     float sEnvAmt;
 
     /* normalised params */
+    /* output ring buffer for UI meters */
+    float meter_buf[METER_BUF];
+    int   meter_idx;
+    int   meter_filled;
+
     float p_cut, p_res, p_drive, p_env, p_sens, p_lforate, p_lfoamt, p_key, p_type, p_mix;
 
     double sample_rate;
@@ -105,7 +111,10 @@ static void sculpt_setup(Sculpt* s, double sr) {
     s->envL = s->envR = 0.0f;
     s->lfo = 0.0f;
     s->sEnvAmt = 0.0f;
-}
+
+    meter_ring_clear(s->meter_buf);
+    s->meter_idx = 0;
+    s->meter_filled = 0;}
 
 __attribute__((export_name("dsp_create")))
 int32_t dsp_create(double sample_rate, int32_t max_block_size) {
@@ -289,6 +298,10 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
         if (out_ch >= 2) { out[n*out_ch + 0] = oL; out[n*out_ch + 1] = oR; }
         else             { out[n*out_ch + 0] = (oL + oR) * 0.5f; }
 
+        if (out_ch >= 2) { out[n*out_ch + 0] = oL; out[n*out_ch + 1] = oR; }
+        else             { out[n*out_ch + 0] = (oL + oR) * 0.5f; }
+        meter_ring_write(s->meter_buf, &s->meter_idx, &s->meter_filled, oL, oR);
+
         /* advance lfo */
         lfoPhase += lfoInc;
         if (lfoPhase >= TWO_PI_F) lfoPhase -= TWO_PI_F;
@@ -341,3 +354,14 @@ int32_t casc_alloc(int32_t n) {
 }
 __attribute__((export_name("casc_free")))
 void casc_free(int32_t ptr) { (void)ptr; }
+
+__attribute__((export_name("dsp_get_meter")))
+int32_t dsp_get_meter(int32_t handle, int32_t ptr, int32_t max_samples) {
+    if (handle < 0 || handle >= MAX_INSTANCES) return 0;
+    Sculpt* s = &g_inst[handle];
+    if (max_samples > METER_FRAMES) max_samples = METER_FRAMES;
+    if (max_samples < 1) return 0;
+    float* out = (float*)(uintptr_t)ptr;
+    return meter_ring_read(s->meter_buf, s->meter_filled, s->meter_idx,
+                           max_samples, out);
+}

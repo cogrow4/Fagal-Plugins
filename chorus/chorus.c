@@ -31,6 +31,7 @@
  *   8 Center   base delay time, ~0.5 .. 25 ms
  */
 #include <stdint.h>
+#include "../_shared/meter_ring.h"
 
 /* ----- minimal math (no libc) ----- */
 static inline float clampf(float x, float lo, float hi) {
@@ -70,6 +71,11 @@ typedef struct {
     float toneL, toneR;
 
     /* normalised params */
+    /* output ring buffer for UI meters */
+    float meter_buf[METER_BUF];
+    int   meter_idx;
+    int   meter_filled;
+
     float p_rate, p_depth, p_mix, p_voices, p_width, p_tone, p_fb, p_mode, p_center;
 
     double sample_rate;
@@ -93,7 +99,10 @@ static void ensemble_setup(Ensemble* c, double sr) {
     c->toneL = c->toneR = 0.0f;
     buf_clear(c->bufL, DELAY_LEN);
     buf_clear(c->bufR, DELAY_LEN);
-}
+
+    meter_ring_clear(c->meter_buf);
+    c->meter_idx = 0;
+    c->meter_filled = 0;}
 
 /* read delay buffer with linear interpolation; delay_samps is fractional,
  * measured backwards from the current write index. */
@@ -310,6 +319,10 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
         if (out_ch >= 2) { out[n*out_ch + 0] = yL; out[n*out_ch + 1] = yR; }
         else             { out[n*out_ch + 0] = (yL + yR) * 0.5f; }
 
+        if (out_ch >= 2) { out[n*out_ch + 0] = yL; out[n*out_ch + 1] = yR; }
+        else             { out[n*out_ch + 0] = (yL + yR) * 0.5f; }
+        meter_ring_write(c->meter_buf, &c->meter_idx, &c->meter_filled, yL, yR);
+
         widx = (widx + 1) & DELAY_MASK;
         phase += phase_inc;
         if (phase >= TWO_PI) phase -= TWO_PI;
@@ -363,3 +376,14 @@ int32_t casc_alloc(int32_t n) {
 }
 __attribute__((export_name("casc_free")))
 void casc_free(int32_t ptr) { (void)ptr; }
+
+__attribute__((export_name("dsp_get_meter")))
+int32_t dsp_get_meter(int32_t handle, int32_t ptr, int32_t max_samples) {
+    if (handle < 0 || handle >= MAX_INSTANCES) return 0;
+    Ensemble* s = &g_inst[handle];
+    if (max_samples > METER_FRAMES) max_samples = METER_FRAMES;
+    if (max_samples < 1) return 0;
+    float* out = (float*)(uintptr_t)ptr;
+    return meter_ring_read(s->meter_buf, s->meter_filled, s->meter_idx,
+                           max_samples, out);
+}

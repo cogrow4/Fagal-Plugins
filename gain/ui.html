@@ -120,9 +120,12 @@ const casc = window.casc || (window.casc = (()=>{
   const state={};
   return {
     _subs:[],
+    _onMeter:null,
     setParam(id,v){state[id]=v;},
     getParam(id){return (id in state)?state[id]:PARAMS_BY_ID[id].def;},
-    subscribe(cb){this._subs.push(cb);}
+    subscribe(cb){this._subs.push(cb);},
+    getMeter(_n){ /* no-op in browser-only mode */ },
+    onMeter(cb){this._onMeter=cb;}
   };
 })());
 
@@ -219,33 +222,60 @@ function fit(){
 }
 new ResizeObserver(fit).observe(cv);fit();
 
-/* simulated meters: animate plausible response based on gain */
+/* Real meters driven by casc.getMeter() from the DSP ring buffer */
 let lastT=performance.now();
 let levelL=0, levelR=0, peakHoldL=0, peakHoldR=0, peakHoldTimeL=0, peakHoldTimeR=0;
+let meterScratch = null;
+let meterPending = false;
+const METER_N = 256;  /* frames per request — ~5.3ms @48k, plenty for ballistics */
+function pollMeter(){
+  if (meterPending || !casc.getMeter) return;
+  meterPending = true;
+  if (!meterScratch) meterScratch = new Float32Array(METER_N * 2);
+  casc.getMeter(METER_N);
+}
+if (casc.onMeter) casc.onMeter((req, arr) => {
+  meterPending = false;
+  if (!arr || arr.length < 2) return;
+  /* find peak in this window (rms would be smoother but peak is more honest) */
+  let mxL = 0, mxR = 0;
+  for (let i = 0; i < arr.length; i += 2) {
+    const a = arr[i]   < 0 ? -arr[i]   : arr[i];
+    const b = arr[i+1] < 0 ? -arr[i+1] : arr[i+1];
+    if (a > mxL) mxL = a;
+    if (b > mxR) mxR = b;
+  }
+  /* feed ballistics with the peak dBFS of this window */
+  if (mxL > 0) mxL = 20 * Math.log10(mxL); else mxL = -80;
+  if (mxR > 0) mxR = 20 * Math.log10(mxR); else mxR = -80;
+  if (mxL > tgtL) tgtL = mxL; else tgtL += vuRel * (mxL - tgtL);
+  if (mxR > tgtR) tgtR = mxR; else tgtR += vuRel * (mxR - tgtR);
+  /* peak hold */
+  if (tgtL > peakHoldL) { peakHoldL = tgtL; peakHoldTimeL = performance.now(); }
+  if (tgtR > peakHoldR) { peakHoldR = tgtR; peakHoldTimeR = performance.now(); }
+});
+let tgtL = -80, tgtR = -80;
+const vuRel = 0.18;
 function draw(now){
   const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
   const W=cv.clientWidth,H=cv.clientHeight;
   ctx.clearRect(0,0,W,H);
 
-  /* simulated dBFS based on gain + activity (UI-only hint) */
   const gnDb=(live[1]-0.5)*48;
   const inDb=(live[0]-0.5)*48;
   const outDb=(live[2]-0.5)*48;
   const totalDb=inDb+gnDb+outDb;
-  /* oscillate slowly between -6 and (totalDb) for "music"-like motion */
-  const tgtL = Math.max(-40, Math.min(0, totalDb - 3 + 5*Math.sin(now*0.0013 + 0.7)));
-  const tgtR = Math.max(-40, Math.min(0, totalDb - 3 + 5*Math.sin(now*0.0011 + 2.1)));
 
-  /* VU ballistics: slow attack, slow release */
-  const vuAtk=0.35*dt, vuRel=0.10*dt;
-  levelL += tgtL>levelL ? vuAtk*(tgtL-levelL) : vuRel*(tgtL-levelL);
-  levelR += tgtR>levelR ? vuAtk*(tgtR-levelR) : vuRel*(tgtR-levelR);
+  /* VU ballistics (level uses slow release on top of target) */
+  const vuAtk=0.6*dt;
+  levelL += tgtL>levelL ? vuAtk*(tgtL-levelL) : vuRel*dt*30*(tgtL-levelL);
+  levelR += tgtR>levelR ? vuAtk*(tgtR-levelR) : vuRel*dt*30*(tgtR-levelR);
   /* peak: fast attack, slow release, hold then drop */
-  const pkAtk=10*dt, pkRel=0.6*dt;
-  if (tgtL>peakHoldL){peakHoldL=tgtL; peakHoldTimeL=now;}
-  else if (now-peakHoldTimeL>1500){peakHoldL += pkRel*(-1.5 - peakHoldL);}
-  if (tgtR>peakHoldR){peakHoldR=tgtR; peakHoldTimeR=now;}
-  else if (now-peakHoldTimeR>1500){peakHoldR += pkRel*(-1.5 - peakHoldR);}
+  const pkRel=0.4*dt;
+  if (now-peakHoldTimeL>1500) peakHoldL += pkRel*(-1.5 - peakHoldL);
+  if (now-peakHoldTimeR>1500) peakHoldR += pkRel*(-1.5 - peakHoldR);
+
+  pollMeter();
 
   /* dB scale: -40 .. +6 */
   const dbMin=-40, dbMax=+6;

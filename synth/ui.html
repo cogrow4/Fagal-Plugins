@@ -2,640 +2,355 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Polymath · Fagal Plugins</title>
 <style>
   :root{
     --bg:#0a0d12; --panel:#131922; --panel2:#0e131b; --edge:#1f2832;
-    --accent:#5fffb0; --accent2:#2da67e; --accent3:#ffb84a; --accent4:#9ff0ff;
-    --text:#e6edf3; --muted:#8b97a7; --track:#1c2530;
+    --accent:#5fffb0; --accent2:#2da67e; --text:#e6edf3; --muted:#8b97a7;
   }
   *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
   html,body{margin:0;height:100%;width:100%;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
     background:radial-gradient(160% 120% at 50% -10%,#0e1d18 0%,var(--bg) 60%);
     color:var(--text);overflow:hidden}
-  .wrap{height:100%;display:flex;flex-direction:column;padding:14px 18px 12px;gap:10px}
+  .wrap{height:100%;display:flex;flex-direction:column;padding:12px 16px 10px;gap:8px}
 
-  /* ---- top header ---- */
-  header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;
+  header{display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;
     border-bottom:1px solid var(--edge)}
-  .brand{display:flex;flex-direction:column;gap:2px}
-  .wordmark{font-size:11px;font-weight:700;letter-spacing:.42em;text-transform:uppercase;color:var(--accent)}
-  .product{font-size:24px;font-weight:800;letter-spacing:.10em}
+  .wordmark{font-size:10px;font-weight:700;letter-spacing:.42em;text-transform:uppercase;color:var(--accent)}
+  .product{font-size:22px;font-weight:800;letter-spacing:.10em}
   .product span{color:var(--accent)}
-  .subp{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:right;line-height:1.4}
+  .subp{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:right;line-height:1.4}
   .subp b{color:var(--accent2);font-weight:600}
 
-  /* ---- main layout: 2x2 grid with oscilloscope top-left ---- */
-  main{flex:1;display:grid;
-    grid-template-columns: 1.4fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    grid-template-areas:
-      "osc osc osc2"
-      "osc osc osc3"
-      "fil env lfo"
-      "arp fx  out";
-    gap:10px;min-height:0}
-  /* simpler: 3-col x 3-row layout */
-  main{
-    grid-template-columns: 1.4fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    grid-template-areas:
-      "osc osc mod"
-      "osc osc mod"
-      "env fil lfo";
-  }
+  main{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+  .row{display:grid;gap:8px}
+  .row.s1{grid-template-columns:1fr}
+  .row.s2{grid-template-columns:1fr 1fr}
+  .row.s3{grid-template-columns:repeat(3,1fr)}
+  .row.s4{grid-template-columns:repeat(4,1fr)}
+  .row.s5{grid-template-columns:repeat(5,1fr)}
 
-  .panel{border:1px solid var(--edge);border-radius:12px;background:var(--panel);
-    padding:11px 12px;display:flex;flex-direction:column;min-height:0;min-width:0}
-  .p-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-  .p-title h3{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);
+  .panel{border:1px solid var(--edge);border-radius:10px;background:var(--panel);
+    padding:9px 10px;display:flex;flex-direction:column;min-height:0;min-width:0}
+  .p-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .p-title h3{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);
     margin:0;font-weight:700}
-  .p-title h3 .sub{color:var(--muted);font-weight:500;margin-left:6px;font-size:9.5px;letter-spacing:.18em}
-  .p-title .tag{font-size:9.5px;color:var(--muted);letter-spacing:.16em;text-transform:uppercase}
+  .p-title .sub{color:var(--muted);font-weight:500;margin-left:6px;font-size:8.5px;letter-spacing:.16em}
+  .p-title .tag{font-size:8.5px;color:var(--muted);letter-spacing:.16em;text-transform:uppercase}
 
-  /* grid placements */
-  .p-osc{grid-area:osc}
-  .p-mod{grid-area:mod}
-  .p-env{grid-area:env}
-  .p-fil{grid-area:fil}
-  .p-lfo{grid-area:lfo}
-
-  /* --- oscilloscope --- */
-  .scope{position:relative;flex:1;border-radius:8px;background:linear-gradient(180deg,#0a0e13,#060a0e);
-    border:1px solid var(--edge);overflow:hidden}
-  .scope canvas{position:absolute;inset:0;width:100%;height:100%}
-  .scope .vbadge{position:absolute;top:8px;left:10px;font-size:9.5px;letter-spacing:.18em;
-    text-transform:uppercase;color:var(--muted)}
-  .scope .vstats{position:absolute;bottom:8px;left:10px;right:10px;display:flex;
-    justify-content:space-between;font-size:9.5px;letter-spacing:.12em;color:var(--accent2);
-    text-transform:uppercase;font-variant-numeric:tabular-nums}
-
-  /* --- knob row layout --- */
-  .knobrow{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-around;
-    gap:8px 4px;flex:1;align-content:center}
-  .cell{display:flex;flex-direction:column;align-items:center;gap:5px}
-  .knob{position:relative;width:54px;height:54px;cursor:ns-resize;touch-action:none}
+  .knobrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-around;
+    gap:6px 4px;flex:1;align-content:center;min-height:0}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .knob{position:relative;width:46px;height:46px;cursor:ns-resize;touch-action:none}
   .knob svg{display:block;overflow:visible}
-  .knob .cap{filter:drop-shadow(0 3px 7px rgba(0,0,0,.5))}
-  .label{font-size:8.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted)}
-  .val{font-size:9.5px;font-variant-numeric:tabular-nums;color:var(--text);
-    background:var(--panel2);border:1px solid var(--edge);border-radius:4px;
-    padding:1px 5px;min-width:40px;text-align:center}
+  .knob .cap{filter:drop-shadow(0 2px 5px rgba(0,0,0,.5))}
+  .label{font-size:8px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted)}
+  .val{font-size:8.5px;font-variant-numeric:tabular-nums;color:var(--text);
+    background:var(--panel2);border:1px solid var(--edge);border-radius:3px;
+    padding:1px 4px;min-width:34px;text-align:center}
 
-  /* mode/wave pills */
-  .pills{display:flex;flex-wrap:wrap;gap:3px}
+  .pills{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px;justify-content:center}
   .pills button{background:var(--panel2);border:1px solid var(--edge);color:var(--muted);
-    font-size:8.5px;letter-spacing:.10em;text-transform:uppercase;padding:3px 6px;border-radius:5px;
+    font-size:8px;letter-spacing:.10em;text-transform:uppercase;padding:2px 5px;border-radius:4px;
     cursor:pointer;transition:.15s;font-weight:600}
   .pills button.on{background:linear-gradient(180deg,var(--accent2),#186047);
-    color:#fff;border-color:var(--accent);box-shadow:0 0 8px rgba(95,255,176,.30)}
+    color:#fff;border-color:var(--accent);box-shadow:0 0 6px rgba(95,255,176,.25)}
 
-  /* envelope visualizer */
-  .env-viz{height:64px;width:100%;border:1px solid var(--edge);border-radius:6px;background:#070a0e;margin-top:6px}
-  .env-viz canvas{width:100%;height:100%;display:block}
-
-  /* filter curve visualizer */
-  .filt-viz{height:64px;width:100%;border:1px solid var(--edge);border-radius:6px;background:#070a0e;margin-top:6px}
-  .filt-viz canvas{width:100%;height:100%;display:block}
-
-  /* LFO viz */
-  .lfo-viz{height:64px;width:100%;border:1px solid var(--edge);border-radius:6px;background:#070a0e;margin-top:6px}
-  .lfo-viz canvas{width:100%;height:100%;display:block}
-
-  /* arp / fx / out */
-  .p-arp, .p-fx, .p-out{grid-column: span 1;}
-  .toggles{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:center;flex:1}
-  .tog{display:flex;flex-direction:column;align-items:center;gap:4px}
-  .sw{width:46px;height:22px;border-radius:12px;background:var(--track);
-    border:1px solid var(--edge);position:relative;cursor:pointer;transition:.18s}
-  .sw .nub{position:absolute;top:1px;left:1px;width:18px;height:18px;border-radius:50%;
-    background:#3a424e;transition:.18s;box-shadow:0 2px 5px rgba(0,0,0,.5)}
+  .tog{display:flex;align-items:center;gap:5px;cursor:pointer}
+  .sw{width:30px;height:16px;border-radius:9px;background:var(--panel2);
+    border:1px solid var(--edge);position:relative;transition:.18s;flex-shrink:0}
+  .sw .nub{position:absolute;top:1px;left:1px;width:12px;height:12px;border-radius:50%;
+    background:#3a424e;transition:.18s}
   .sw.on{background:var(--accent2);border-color:var(--accent)}
-  .sw.on .nub{left:25px;background:var(--accent);box-shadow:0 0 8px rgba(95,255,176,.4)}
-  .tog .lab{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .sw.on .nub{left:15px;background:var(--accent)}
 
-  /* footer */
-  footer{margin-top:0;display:flex;justify-content:space-between;align-items:center;
-    padding-top:6px;border-top:1px solid var(--edge)}
-  .hint{font-size:9.5px;color:var(--muted)}
-  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);
-    box-shadow:0 0 8px var(--accent);display:inline-block;margin-right:5px;vertical-align:middle}
-  .badge{font-size:9.5px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
-
-  /* responsive collapse */
-  @media (max-width: 900px) {
-    main{ grid-template-columns:1fr 1fr; grid-template-areas:"osc osc" "env fil" "mod lfo"; }
-  }
+  footer{display:flex;justify-content:space-between;align-items:center;
+    padding-top:5px;border-top:1px solid var(--edge)}
+  .hint{font-size:8.5px;color:var(--muted)}
+  .badge{font-size:8.5px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">
-      <div class="wordmark">FAGAL·PLUGINS</div>
+    <div>
+      <div class="wordmark">FAGAL · PLUGINS</div>
       <div class="product">Poly<span>math</span></div>
     </div>
-    <div class="subp">
-      <b>POLYPHONIC SYNTH</b><br/>
-      8 voices · 2 osc + sub + noise · FX bus · arpeggiator
-    </div>
+    <div class="subp"><b>POLYPHONIC SYNTH</b><br/>8 voices · 2 osc + sub + noise</div>
   </header>
 
   <main>
-    <!-- OSCILLOSCOPE -->
-    <div class="panel p-osc">
-      <div class="p-title">
-        <h3>Oscillator Section <span class="sub">osc1 · osc2 · sub · noise</span></h3>
-        <span class="tag" id="voicesTag">VOICES 0 / 8</span>
-      </div>
-      <div class="scope" style="height:120px">
-        <span class="vbadge">Output · Stereo Oscilloscope</span>
-        <canvas id="oscCv"></canvas>
-        <div class="vstats">
-          <span id="osc-cut">CUT 1.4 kHz</span>
-          <span id="osc-res">RES 20%</span>
-          <span id="osc-fx">FX 25%</span>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex:1;min-height:0">
-        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+    <!-- OSCILLATORS -->
+    <div class="panel">
+      <div class="p-title"><h3>Oscillators <span class="sub">osc1 · osc2 · sub · noise</span></h3><span class="tag">4 wave</span></div>
+      <div class="row s2" style="flex:1;min-height:0">
+        <div style="display:flex;flex-direction:column;min-height:0;gap:4px">
           <div class="pills" id="osc1Pills">
-            <button data-w="0">Sine</button>
-            <button data-w="1">Saw</button>
-            <button data-w="2">Sqr</button>
-            <button data-w="3">Tri</button>
+            <button data-w="0">Sine</button><button data-w="1">Saw</button>
+            <button data-w="2">Sqr</button><button data-w="3">Tri</button>
           </div>
-          <div class="knobrow" id="osc1Knobs"></div>
+          <div class="knobrow" id="osc1Knobs" style="flex:1"></div>
         </div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;flex-direction:column;min-height:0;gap:4px">
           <div class="pills" id="osc2Pills">
-            <button data-w="0">Sine</button>
-            <button data-w="1">Saw</button>
-            <button data-w="2">Sqr</button>
-            <button data-w="3">Tri</button>
+            <button data-w="0">Sine</button><button data-w="1">Saw</button>
+            <button data-w="2">Sqr</button><button data-w="3">Tri</button>
           </div>
-          <div class="knobrow" id="osc2Knobs"></div>
-        </div>
-        <div style="flex:0 0 110px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:space-around">
-          <div class="cell"><div class="knob" data-id="6"></div><div class="label">Sub</div></div>
-          <div class="cell"><div class="knob" data-id="7"></div><div class="label">Noise</div></div>
+          <div class="knobrow" id="osc2Knobs" style="flex:1"></div>
         </div>
       </div>
     </div>
 
-    <!-- MOD MATRIX / LFOs -->
-    <div class="panel p-mod">
-      <div class="p-title">
-        <h3>Modulation <span class="sub">lfo1 → filter · lfo2 → pitch</span></h3>
-        <span class="tag">FX + MASTER</span>
+    <!-- FILTER + LFOs -->
+    <div class="row s2" style="flex:1;min-height:0">
+      <div class="panel">
+        <div class="p-title">
+          <h3>Filter <span class="sub">svf</span></h3>
+          <div class="pills" id="filtPills">
+            <button data-t="0">LP</button><button data-t="1">HP</button>
+            <button data-t="2">BP</button><button data-t="3">Notch</button>
+          </div>
+        </div>
+        <div class="knobrow" id="filtKnobs" style="flex:1"></div>
       </div>
-      <div class="knobrow" id="lfoKnobs" style="margin-bottom:6px"></div>
-      <div class="lfo-viz"><canvas id="lfoCv"></canvas></div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex:1;min-height:0;align-items:flex-end;justify-content:space-around">
-        <div class="cell"><div class="knob" data-id="25"></div><div class="label">FX Mix</div></div>
-        <div class="cell"><div class="knob" data-id="26"></div><div class="label">Master</div></div>
+      <div class="panel">
+        <div class="p-title"><h3>LFOs <span class="sub">lfo1 → cutoff · lfo2 → pitch</span></h3><span class="tag">4 params</span></div>
+        <div class="knobrow" id="lfoKnobs" style="flex:1"></div>
       </div>
     </div>
 
     <!-- ENVELOPES -->
-    <div class="panel p-env">
-      <div class="p-title">
-        <h3>Envelopes <span class="sub">amp · mod</span></h3>
-        <span class="tag">A · D · S · R</span>
+    <div class="row s2" style="flex:1;min-height:0">
+      <div class="panel">
+        <div class="p-title"><h3>Amp Envelope <span class="sub">adsr</span></h3></div>
+        <div class="knobrow" id="ampKnobs" style="flex:1"></div>
       </div>
-      <div class="env-viz"><canvas id="envCv"></canvas></div>
-      <div style="display:flex;gap:6px;margin-top:6px;flex:1;min-height:0;align-items:flex-end">
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div class="pills" style="margin-bottom:2px"><button class="on" disabled>Amp ADSR</button></div>
-          <div class="knobrow" id="ampKnobs"></div>
-        </div>
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div class="pills" style="margin-bottom:2px"><button class="on" disabled>Mod ADSR</button></div>
-          <div class="knobrow" id="modKnobs"></div>
-        </div>
+      <div class="panel">
+        <div class="p-title"><h3>Mod Envelope <span class="sub">adsr</span></h3></div>
+        <div class="knobrow" id="modKnobs" style="flex:1"></div>
       </div>
     </div>
 
-    <!-- FILTER -->
-    <div class="panel p-fil">
-      <div class="p-title">
-        <h3>Filter <span class="sub">svf · lp / hp / bp / notch</span></h3>
-        <div class="pills" id="filtPills">
-          <button data-t="0">LP</button>
-          <button data-t="1">HP</button>
-          <button data-t="2">BP</button>
-          <button data-t="3">Notch</button>
+    <!-- FX + ARPEGGIATOR + MASTER -->
+    <div class="row s3" style="flex:1;min-height:0">
+      <div class="panel">
+        <div class="p-title"><h3>FX + Master</h3></div>
+        <div class="knobrow" id="fxKnobs" style="flex:1"></div>
+      </div>
+      <div class="panel">
+        <div class="p-title"><h3>Arpeggiator <span class="sub">up · down · up-down · rnd</span></h3></div>
+        <div class="knobrow" id="arpKnobs" style="flex:1"></div>
+      </div>
+      <div class="panel">
+        <div class="p-title"><h3>MIDI</h3><span class="tag">in</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;flex:1">
+          <div class="tog" id="arpOnTog"><div class="sw" id="arpSw"><div class="nub"></div></div><span class="label">Arp On</span></div>
+          <div style="font-size:8.5px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase">play keyboard · C3 = 60</div>
         </div>
       </div>
-      <div class="filt-viz"><canvas id="filtCv"></canvas></div>
-      <div class="knobrow" id="filtKnobs" style="margin-top:6px;flex:1"></div>
     </div>
   </main>
 
   <footer>
-    <div class="hint"><span class="dot"></span>play MIDI · drag knob vertically · double-click to reset · click pills</div>
-    <div class="badge">Fagal · Polymath v2.0 · 30 parameters</div>
+    <div class="hint">drag knob vertically · double-click resets · click pills to switch</div>
+    <div class="badge">Fagal · Polymath v2.0</div>
   </footer>
 </div>
 
 <script>
-/* ---- CASC UI bridge shim ---- */
 const casc = window.casc || (window.casc = (()=>{
-  const state={};
+  const state = {};
+  let hostGet = null, hostSet = null;
+  try { if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.casc) {
+    hostGet = (id) => window.webkit.messageHandlers.casc.postMessage({type:'get',id});
+    hostSet = (id,v) => window.webkit.messageHandlers.casc.postMessage({type:'set',id,value:v});
+  }} catch(e){}
   return {
-    _subs:[],
-    setParam(id,v){state[id]=v;},
-    getParam(id){return (id in state)?state[id]:PARAMS_BY_ID[id].def;},
-    subscribe(cb){this._subs.push(cb);}
+    _subs: [],
+    setParam(id, v){ state[id]=v; this._subs.forEach(fn=>fn(id,v)); },
+    getParam(id){ return state[id]; },
+    onChange(fn){ this._subs.push(fn); },
+    commit(id, v){
+      state[id] = v;
+      if (hostSet) hostSet(id, v);
+    }
   };
 })());
 
-/* (id, label, fmt, def) */
-const PARAMS = [
-  /* OSC 1 */
-  {id:0, label:"Wave",   def:0.0,  fmt:waveFmt,   sec:"osc1"},
-  {id:1, label:"Level",  def:0.7,  fmt:pct,       sec:"osc1"},
-  {id:2, label:"Detune", def:0.5,  fmt:centsFmt,  sec:"osc1"},
-  /* OSC 2 */
-  {id:3, label:"Wave",   def:0.33, fmt:waveFmt,   sec:"osc2"},
-  {id:4, label:"Level",  def:0.6,  fmt:pct,       sec:"osc2"},
-  {id:5, label:"Detune", def:0.5,  fmt:centsFmt,  sec:"osc2"},
-  /* FILTER */
-  {id:8,  label:"Cutoff",    def:0.65, fmt:hzFmt,   sec:"filt"},
-  {id:9,  label:"Resonance", def:0.20, fmt:pct,     sec:"filt"},
-  {id:11, label:"Drive",     def:0.0,  fmt:pct,     sec:"filt"},
-  {id:12, label:"Env Amt",   def:0.4,  fmt:envAmt,  sec:"filt"},
-  /* AMP ENV */
-  {id:13,label:"A", def:0.05, fmt:secFmt, sec:"amp"},
-  {id:14,label:"D", def:0.3,  fmt:secFmt, sec:"amp"},
-  {id:15,label:"S", def:0.7,  fmt:pct,    sec:"amp"},
-  {id:16,label:"R", def:0.3,  fmt:secFmt, sec:"amp"},
-  /* MOD ENV */
-  {id:17,label:"A", def:0.1,  fmt:secFmt, sec:"mod"},
-  {id:18,label:"D", def:0.3,  fmt:secFmt, sec:"mod"},
-  {id:19,label:"S", def:0.5,  fmt:pct,    sec:"mod"},
-  {id:20,label:"R", def:0.4,  fmt:secFmt, sec:"mod"},
-  /* LFOs */
-  {id:21,label:"LFO1 Rate",  def:0.0, fmt:v=>(0.05+v*11.95).toFixed(2)+" Hz", sec:"lfo"},
-  {id:22,label:"LFO1 Depth", def:0.0, fmt:v=>"→"+(v*6).toFixed(1)+" oct",    sec:"lfo"},
-  {id:23,label:"LFO2 Rate",  def:0.0, fmt:v=>(0.05+v*11.95).toFixed(2)+" Hz", sec:"lfo"},
-  {id:24,label:"LFO2 Depth", def:0.0, fmt:v=>"→"+(v*200).toFixed(0)+" ct",   sec:"lfo"},
-  /* OUTPUT + FX */
-  {id:25,label:"FX Mix", def:0.25, fmt:pct,   sec:"out"},
-  {id:26,label:"Master", def:0.8,  fmt:pct,   sec:"out"},
-  /* ARP */
-  {id:27,label:"Arp",    def:0.0,  fmt:v=>v>=0.5?"ON":"OFF", sec:"arp", togglable:true},
-  {id:28,label:"Arp Rate", def:0.5,fmt:v=>(0.5+v*11.5).toFixed(1)+" Hz", sec:"arp"},
-  {id:29,label:"Arp Gate", def:0.5,fmt:pct, sec:"arp"},
+const params = [
+  /* osc1 */ 0,1,2, /* osc2 */ 3,4,5, /* sub/noise */ 6,7,
+  /* filter */ 8,9,10,11,12,
+  /* amp env */ 13,14,15,16,
+  /* mod env */ 17,18,19,20,
+  /* lfos */ 21,22,23,24,
+  /* fx+master */ 25,26,
+  /* arp */ 27,28,29
 ];
-const PARAMS_BY_ID={}; PARAMS.forEach(p=>PARAMS_BY_ID[p.id]=p);
-PARAMS_BY_ID[6]={id:6,def:0.3};
-PARAMS_BY_ID[7]={id:7,def:0.0};
-PARAMS_BY_ID[10]={id:10,def:0.0};  /* filter type selector */
+const defaults = {
+  0:0, 1:0.7, 2:0.5,
+  3:0.33, 4:0.6, 5:0.5,
+  6:0.3, 7:0,
+  8:0.65, 9:0.2, 10:0, 11:0, 12:0.4,
+  13:0.05, 14:0.3, 15:0.7, 16:0.3,
+  17:0.1, 18:0.3, 19:0.5, 20:0.4,
+  21:0, 22:0, 23:0, 24:0,
+  25:0.25, 26:0.8,
+  27:0, 28:0.5, 29:0.5
+};
+const stepMap = { 0:4, 3:4, 10:4, 27:2 };
+const stepLabels = {
+  0:['Sine','Saw','Sqr','Tri'],
+  3:['Sine','Saw','Sqr','Tri'],
+  10:['LP','HP','BP','Notch'],
+  27:['Off','On']
+};
 
-function pct(v){return Math.round(v*100)+"%";}
-function secFmt(v){return (0.001+v*v*3).toFixed(2)+" s";}
-function centsFmt(v){return ((v-0.5)*100).toFixed(0)+" ct";}
-function hzFmt(v){return Math.round(20*Math.pow(1000,v))+" Hz";}
-function waveFmt(v){return ["Sine","Saw","Sqr","Tri"][Math.min(3,Math.floor(v*3.999))];}
-function envAmt(v){return ((v-0.5)*6).toFixed(1)+" oct";}
-
-const live={};
-PARAMS.forEach(p=>live[p.id]=casc.getParam(p.id));
-[6,7,10].forEach(id=>live[id]=casc.getParam(id));
-
-/* ---- knob factory ---- */
-const ARC_START=-135, ARC_END=135;
-function knobSVG(){
-  return `<svg width="54" height="54" viewBox="0 0 86 86">
-    <circle cx="43" cy="43" r="36" fill="none" stroke="var(--track)" stroke-width="7"
-      stroke-linecap="round" stroke-dasharray="170 400" transform="rotate(135 43 43)"/>
-    <circle class="arc" cx="43" cy="43" r="36" fill="none" stroke="var(--accent)" stroke-width="7"
-      stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(135 43 43)"/>
-    <g class="cap">
-      <circle cx="43" cy="43" r="24" fill="var(--panel2)" stroke="var(--edge)" stroke-width="1.4"/>
-      <line class="ind" x1="43" y1="43" x2="43" y2="24" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round"/>
-    </g>
-  </svg>`;
+function fmtVal(id, v) {
+  if (id === 8) { /* cutoff */
+    const hz = 20 * Math.pow(20000/20, v);
+    return hz < 1000 ? hz.toFixed(0)+' Hz' : (hz/1000).toFixed(2)+' kHz';
+  }
+  if (id === 13 || id === 14 || id === 16 || id === 17 || id === 18 || id === 20) {
+    /* time-based */
+    return (v*v*4).toFixed(2)+' s';
+  }
+  if (id === 21 || id === 23 || id === 28) { /* rate */
+    return (0.05 + v*v*15).toFixed(2)+' Hz';
+  }
+  if (id === 27) return v < 0.5 ? 'Off' : 'On';
+  if (stepMap[id]) {
+    const s = Math.min(stepMap[id]-1, Math.floor(v * stepMap[id] + 0.0001));
+    return stepLabels[id][s];
+  }
+  return (v*100).toFixed(0)+'%';
 }
-function makeKnob(p){
-  const cell=document.createElement("div");cell.className="cell";
-  const knob=document.createElement("div");knob.className="knob";knob.innerHTML=knobSVG();
-  const label=document.createElement("div");label.className="label";label.textContent=p.label;
-  const val=document.createElement("div");val.className="val";
-  cell.append(knob,label,val);
-  let value=casc.getParam(p.id);
-  const arc=knob.querySelector(".arc"), ind=knob.querySelector(".ind");
-  const CIRC=2*Math.PI*36;
-  function render(){
-    const ang=ARC_START+(ARC_END-ARC_START)*value;
-    ind.setAttribute("transform",`rotate(${ang} 43 43)`);
-    arc.setAttribute("stroke-dasharray",`${value*(270/360)*CIRC} 400`);
-    val.textContent=p.fmt?p.fmt(value):"";
-  }
-  function set(v,push){
-    value=Math.max(0,Math.min(1,v));live[p.id]=value;render();
-    if(push)casc.setParam(p.id,value);
-  }
-  render();
-  let dragging=false,lastY=0;
-  knob.addEventListener("pointerdown",e=>{dragging=true;lastY=e.clientY;knob.setPointerCapture(e.pointerId);});
-  knob.addEventListener("pointermove",e=>{if(!dragging)return;const dy=lastY-e.clientY;lastY=e.clientY;set(value+dy*0.005,true);});
-  knob.addEventListener("pointerup",()=>dragging=false);
-  knob.addEventListener("dblclick",()=>set(p.def,true));
-  casc.subscribe((id,v)=>{if(id===p.id)set(v,false);});
+
+function makeKnob(id, label) {
+  const cell = document.createElement('div'); cell.className = 'cell';
+  const k = document.createElement('div'); k.className = 'knob'; k.dataset.id = id;
+  k.innerHTML = `
+    <svg viewBox="0 0 46 46" width="46" height="46">
+      <circle cx="23" cy="23" r="18" fill="none" stroke="#1c2530" stroke-width="3"/>
+      <circle cx="23" cy="23" r="18" fill="none" stroke="#2da67e" stroke-width="3"
+        stroke-dasharray="${(2*Math.PI*18).toFixed(2)}"
+        stroke-dashoffset="${((1-casc.getParam(id))*2*Math.PI*18*0.75).toFixed(2)}"
+        transform="rotate(135 23 23)" stroke-linecap="round"/>
+      <g class="cap" transform="rotate(${-135 + casc.getParam(id)*270} 23 23)">
+        <line x1="23" y1="9" x2="23" y2="14" stroke="#5fffb0" stroke-width="2.5" stroke-linecap="round"/>
+      </g>
+    </svg>`;
+  const lab = document.createElement('div'); lab.className = 'label'; lab.textContent = label;
+  const val = document.createElement('div'); val.className = 'val'; val.textContent = fmtVal(id, casc.getParam(id));
+  cell.append(k, lab, val);
+  let startY = 0, startV = 0, dragging = false;
+  const onDown = (e) => {
+    const pt = e.touches ? e.touches[0] : e;
+    startY = pt.clientY; startV = casc.getParam(id); dragging = true;
+    e.preventDefault();
+  };
+  const onMove = (e) => {
+    if (!dragging) return;
+    const pt = e.touches ? e.touches[0] : e;
+    const dy = startY - pt.clientY;
+    let v = startV + dy / 200;
+    if (stepMap[id]) {
+      const s = Math.round(v * (stepMap[id]-1)) / (stepMap[id]-1);
+      v = Math.max(0, Math.min(1, s));
+    } else {
+      v = Math.max(0, Math.min(1, v));
+    }
+    casc.setParam(id, v);
+    casc.commit(id, v);
+  };
+  const onUp = () => { dragging = false; };
+  k.addEventListener('mousedown', onDown);
+  k.addEventListener('touchstart', onDown, {passive:false});
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, {passive:false});
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+  k.addEventListener('dblclick', () => { casc.setParam(id, defaults[id]); casc.commit(id, defaults[id]); });
+  casc.onChange((cid, v) => { if (cid === id) val.textContent = fmtVal(id, v); });
   return cell;
 }
-function makeKnobById(id, label){
-  const p = PARAMS_BY_ID[id] || {id, def:0, fmt:v=>Math.round(v*100)+"%"};
-  const cell=document.createElement("div");cell.className="cell";
-  const knob=document.createElement("div");knob.className="knob";knob.innerHTML=knobSVG();
-  const lab=document.createElement("div");lab.className="label";lab.textContent=label;
-  const val=document.createElement("div");val.className="val";
-  cell.append(knob,lab,val);
-  let value=casc.getParam(id);
-  const arc=knob.querySelector(".arc"), ind=knob.querySelector(".ind");
-  const CIRC=2*Math.PI*36;
-  function render(){
-    const ang=ARC_START+(ARC_END-ARC_START)*value;
-    ind.setAttribute("transform",`rotate(${ang} 43 43)`);
-    arc.setAttribute("stroke-dasharray",`${value*(270/360)*CIRC} 400`);
-    val.textContent=p.fmt?p.fmt(value):"";
-  }
-  function set(v,push){
-    value=Math.max(0,Math.min(1,v));live[id]=value;render();
-    if(push)casc.setParam(id,value);
-  }
-  render();
-  let dragging=false,lastY=0;
-  knob.addEventListener("pointerdown",e=>{dragging=true;lastY=e.clientY;knob.setPointerCapture(e.pointerId);});
-  knob.addEventListener("pointermove",e=>{if(!dragging)return;const dy=lastY-e.clientY;lastY=e.clientY;set(value+dy*0.005,true);});
-  knob.addEventListener("pointerup",()=>dragging=false);
-  knob.addEventListener("dblclick",()=>set(p.def,true));
-  casc.subscribe((vid,v)=>{if(vid===id)set(v,false);});
-  return cell;
+
+function paintKnob(k) {
+  const id = +k.dataset.id;
+  const v = casc.getParam(id);
+  const dash = (1 - v) * 2 * Math.PI * 18 * 0.75;
+  const svg = k.querySelector('svg');
+  svg.querySelector('circle[stroke-dashoffset]').setAttribute('stroke-dashoffset', dash.toFixed(2));
+  svg.querySelector('g.cap').setAttribute('transform', `rotate(${-135 + v*270} 23 23)`);
+  /* val cell sibling */
+  const val = k.parentElement.querySelector('.val');
+  if (val) val.textContent = fmtVal(id, v);
 }
 
-/* mount knob rows by section */
-PARAMS.filter(p=>p.sec==="osc1" && p.id!==0).forEach(p=>document.getElementById("osc1Knobs").appendChild(makeKnob(p)));
-PARAMS.filter(p=>p.sec==="osc2" && p.id!==3).forEach(p=>document.getElementById("osc2Knobs").appendChild(makeKnob(p)));
-PARAMS.filter(p=>p.sec==="filt" && p.id!==10).forEach(p=>document.getElementById("filtKnobs").appendChild(makeKnob(p)));
-PARAMS.filter(p=>p.sec==="amp").forEach(p=>document.getElementById("ampKnobs").appendChild(makeKnob(p)));
-PARAMS.filter(p=>p.sec==="mod").forEach(p=>document.getElementById("modKnobs").appendChild(makeKnob(p)));
-PARAMS.filter(p=>p.sec==="lfo").forEach(p=>document.getElementById("lfoKnobs").appendChild(makeKnob(p)));
-/* sub + noise knobs already inline in markup; we attach behavior to data-id */
-document.querySelectorAll("[data-id]").forEach(el=>{
-  const id=+el.dataset.id;
-  const lbl=el.parentElement.querySelector(".label").textContent;
-  el.appendChild(knobSVGNode());
-  attachKnobBehavior(el, id, lbl);
+function buildRow(id, ids, labels) {
+  ids.forEach((pid, i) => id.appendChild(makeKnob(pid, labels[i])));
+}
+
+/* ---- build sections ---- */
+buildRow(document.getElementById('osc1Knobs'), [0,1,2], ['Wave','Level','Detune']);
+buildRow(document.getElementById('osc2Knobs'), [3,4,5], ['Wave','Level','Detune']);
+buildRow(document.getElementById('filtKnobs'), [8,9,11,12], ['Cutoff','Reso','Drive','Env Amt']);
+buildRow(document.getElementById('lfoKnobs'), [21,22,23,24], ['LFO1 Rate','LFO1 Depth','LFO2 Rate','LFO2 Depth']);
+buildRow(document.getElementById('ampKnobs'), [13,14,15,16], ['Attack','Decay','Sustain','Release']);
+buildRow(document.getElementById('modKnobs'), [17,18,19,20], ['Attack','Decay','Sustain','Release']);
+buildRow(document.getElementById('fxKnobs'), [25,26], ['FX Mix','Master']);
+buildRow(document.getElementById('arpKnobs'), [28,29], ['Rate','Gate']);
+
+/* ---- pills (wave / filter type) ---- */
+function bindPills(containerId, paramId) {
+  const cont = document.getElementById(containerId);
+  const buttons = cont.querySelectorAll('button');
+  const paint = () => {
+    const v = casc.getParam(paramId);
+    const s = stepMap[paramId] ? Math.min(stepMap[paramId]-1, Math.floor(v*stepMap[paramId]+0.0001)) : 0;
+    buttons.forEach((b, i) => b.classList.toggle('on', i === s));
+  };
+  paint();
+  buttons.forEach((b, i) => b.addEventListener('click', () => {
+    const v = i / (stepMap[paramId]-1);
+    casc.setParam(paramId, v); casc.commit(paramId, v);
+  }));
+  casc.onChange((id) => { if (id === paramId) paint(); });
+}
+bindPills('osc1Pills', 0);
+bindPills('osc2Pills', 3);
+bindPills('filtPills', 10);
+
+/* ---- arp toggle (param 27) ---- */
+const arpSw = document.getElementById('arpSw');
+const paintArp = () => arpSw.classList.toggle('on', casc.getParam(27) >= 0.5);
+paintArp();
+arpSw.parentElement.addEventListener('click', () => {
+  const v = casc.getParam(27) >= 0.5 ? 0 : 1;
+  casc.setParam(27, v); casc.commit(27, v);
 });
-function knobSVGNode(){const d=document.createElement("div");d.innerHTML=knobSVG();return d.firstElementChild;}
-function attachKnobBehavior(knobEl, id, label){
-  const p=PARAMS_BY_ID[id]||{id,def:0,fmt:v=>Math.round(v*100)+"%"};
-  let value=casc.getParam(id);
-  const arc=knobEl.querySelector(".arc"), ind=knobEl.querySelector(".ind");
-  const CIRC=2*Math.PI*36;
-  const val=knobEl.parentElement.querySelector(".val");
-  function render(){
-    const ang=ARC_START+(ARC_END-ARC_START)*value;
-    ind.setAttribute("transform",`rotate(${ang} 43 43)`);
-    arc.setAttribute("stroke-dasharray",`${value*(270/360)*CIRC} 400`);
-    if(val) val.textContent=p.fmt?p.fmt(value):"";
-  }
-  function set(v,push){value=Math.max(0,Math.min(1,v));live[id]=value;render();if(push)casc.setParam(id,value);}
-  render();
-  let dragging=false,lastY=0;
-  knobEl.addEventListener("pointerdown",e=>{dragging=true;lastY=e.clientY;knobEl.setPointerCapture(e.pointerId);});
-  knobEl.addEventListener("pointermove",e=>{if(!dragging)return;const dy=lastY-e.clientY;lastY=e.clientY;set(value+dy*0.005,true);});
-  knobEl.addEventListener("pointerup",()=>dragging=false);
-  knobEl.addEventListener("dblclick",()=>set(p.def,true));
-  casc.subscribe((vid,v)=>{if(vid===id)set(v,false);});
-}
+casc.onChange((id) => { if (id === 27) paintArp(); });
 
-/* ---- wave / filter pills ---- */
-function syncPills(sel,paramId,divBy){
-  const pills=document.querySelectorAll(sel+" button");
-  const cur=Math.round(casc.getParam(paramId)*(divBy-1));
-  pills.forEach(b=>b.classList.toggle("on", +b.dataset.w===cur || +b.dataset.t===cur));
-}
-function bindPills(sel,paramId,divBy,prefix){
-  document.querySelectorAll(sel+" button").forEach(b=>{
-    b.addEventListener("click",()=>{
-      const v=+b.dataset[prefix];
-      casc.setParam(paramId, v/(divBy-1));
-    });
-  });
-  casc.subscribe((id,v)=>{
-    if(id!==paramId) return;
-    const cur=Math.round(v*(divBy-1));
-    document.querySelectorAll(sel+" button").forEach(b=>
-      b.classList.toggle("on", +b.dataset[prefix]===cur));
-  });
-}
-bindPills("#osc1Pills",0,4,"w");
-bindPills("#osc2Pills",3,4,"w");
-bindPills("#filtPills",10,4,"t");
+/* ---- sub + noise (6,7) need knobs in osc row too ---- */
+/* Insert Sub and Noise into the right column of oscillators row */
+const oscRight = document.getElementById('osc2Knobs');
+oscRight.appendChild(makeKnob(6, 'Sub'));
+oscRight.appendChild(makeKnob(7, 'Noise'));
 
-/* ---- envelope visualizer ---- */
-const envCv=document.getElementById("envCv");
-const envCtx=envCv.getContext("2d");
-function fitEnv(){const r=envCv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
-  envCv.width=r.width*dpr;envCv.height=r.height*dpr;envCtx.setTransform(dpr,0,0,dpr,0,0);}
-new ResizeObserver(fitEnv).observe(envCv);fitEnv();
-function drawEnv(){
-  const W=envCv.clientWidth,H=envCv.clientHeight;
-  envCtx.clearRect(0,0,W,H);
-  const aA=0.001+live[13]*live[13]*3, aD=0.001+live[14]*live[14]*3, aS=live[15], aR=0.001+live[16]*live[16]*3;
-  const mA=0.001+live[17]*live[17]*3, mD=0.001+live[18]*live[18]*3, mS=live[19], mR=0.001+live[20]*live[20]*3;
-  const total=Math.max(aA+aD+aR+0.2, mA+mD+mR+0.2, 0.5);
-  function path(tA,tD,tS,tR,color){
-    envCtx.strokeStyle=color;envCtx.lineWidth=2.0;
-    envCtx.beginPath();
-    let x=0, y=H;
-    const seg = (a,b,ya,yb)=>{
-      const steps=8;
-      for(let i=0;i<=steps;i++){
-        const xx = x + (a/total)*(W-4);
-        const yy = H - (ya + (yb-ya)*(i/steps))*(H-6);
-        if(i===0 && x===0) envCtx.moveTo(xx,yy); else envCtx.lineTo(xx,yy);
-      }
-    };
-    seg(tA,0, 0,1);
-    seg(tD,0, 1,tS);
-    seg(0.3,0, tS,tS);
-    seg(tR,0, tS,0);
-    envCtx.stroke();
+/* ---- init defaults if state empty ---- */
+Object.keys(defaults).forEach(id => {
+  if (typeof casc.getParam(+id) !== 'number') {
+    casc.setParam(+id, defaults[id]);
+    casc.commit(+id, defaults[id]);
   }
-  path(aA,aD,aS,aR, "rgba(95,255,176,0.95)");
-  path(mA,mD,mS,mR, "rgba(255,184,74,0.95)");
-  /* labels */
-  envCtx.fillStyle="rgba(95,255,176,0.55)";envCtx.font="8.5px -apple-system,sans-serif";
-  envCtx.fillText("AMP",4,10);
-  envCtx.fillStyle="rgba(255,184,74,0.55)";
-  envCtx.fillText("MOD",W-22,10);
-}
-drawEnv();
-/* redraw envelope when any of its params change (cheap: just on every animation) */
-function loopEnvDraw(){
-  drawEnv();
-  requestAnimationFrame(loopEnvDraw);
-}
-requestAnimationFrame(loopEnvDraw);
+});
 
-/* ---- filter curve visualizer ---- */
-const filtCv=document.getElementById("filtCv");
-const filtCtx=filtCv.getContext("2d");
-function fitFilt(){const r=filtCv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
-  filtCv.width=r.width*dpr;filtCv.height=r.height*dpr;filtCtx.setTransform(dpr,0,0,dpr,0,0);}
-new ResizeObserver(fitFilt).observe(filtCv);fitFilt();
-function svfMag(fc,q,f,t){
-  const s=f/fc, s2=s*s, num=(s2-1);
-  const lp=1/Math.sqrt(1+(num*num)/(q*q));
-  const hp=(s2)/Math.sqrt(s2*s2+(num*num)/(q*q));
-  const bp=(s/q)/Math.sqrt((num*num)/(q*q)+1);
-  switch(t){case 0:return lp;case 1:return hp;case 2:return bp;case 3:return Math.max(0,1-hp);}
-  return lp;
-}
-function drawFilt(){
-  const W=filtCv.clientWidth,H=filtCv.clientHeight;
-  filtCtx.clearRect(0,0,W,H);
-  const fc=20*Math.pow(1000,live[8]);
-  const q=Math.max(0.03,1-live[9]*0.97);
-  const t=Math.round(live[10]*3);
-  /* log freq grid */
-  filtCtx.strokeStyle="rgba(255,255,255,0.05)";filtCtx.lineWidth=1;
-  const freqs=[100,1000,10000];
-  function xOf(f){return Math.log(f/20)/Math.log(20000/20)*(W-6)+3;}
-  for(const f of freqs){const x=xOf(f);filtCtx.beginPath();filtCtx.moveTo(x,0);filtCtx.lineTo(x,H);filtCtx.stroke();}
-  /* the curve */
-  const grad=filtCtx.createLinearGradient(0,0,W,0);
-  grad.addColorStop(0,"rgba(159,240,255,0.7)");
-  grad.addColorStop(1,"rgba(95,255,176,0.95)");
-  filtCtx.strokeStyle=grad;filtCtx.lineWidth=2.2;
-  filtCtx.beginPath();
-  for(let px=0;px<=W;px++){
-    const f=20*Math.pow(20000/20,px/(W-1));
-    const mag=svfMag(fc,q,f,t);
-    const db=20*Math.log10(Math.max(0.0001,mag));
-    const y=H*0.18 - (Math.max(-36,Math.min(0,db))/36)*(H*0.65);
-    if(px===0)filtCtx.moveTo(px,y);else filtCtx.lineTo(px,y);
-  }
-  filtCtx.stroke();
-  /* cutoff cursor */
-  if(fc>=20 && fc<=20000){
-    const x=xOf(fc);
-    filtCtx.strokeStyle="rgba(95,255,176,0.5)";filtCtx.lineWidth=1;
-    filtCtx.beginPath();filtCtx.moveTo(x,0);filtCtx.lineTo(x,H);filtCtx.stroke();
-  }
-}
-function loopFiltDraw(){drawFilt();requestAnimationFrame(loopFiltDraw);}
-requestAnimationFrame(loopFiltDraw);
-
-/* ---- LFO visualizer ---- */
-const lfoCv=document.getElementById("lfoCv");
-const lfoCtx=lfoCv.getContext("2d");
-function fitLfo(){const r=lfoCv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
-  lfoCv.width=r.width*dpr;lfoCv.height=r.height*dpr;lfoCtx.setTransform(dpr,0,0,dpr,0,0);}
-new ResizeObserver(fitLfo).observe(lfoCv);fitLfo();
-let lfoT1=0, lfoT2=0, lastT2=performance.now();
-function drawLfo(now){
-  const dt=Math.min(0.05,(now-lastT2)/1000);lastT2=now;
-  const W=lfoCv.clientWidth,H=lfoCv.clientHeight;
-  lfoCtx.clearRect(0,0,W,H);
-  const l1=0.05+live[21]*11.95, l2=0.05+live[23]*11.95;
-  lfoT1 += 2*Math.PI*l1*dt; if(lfoT1>1e6)lfoT1-=1e6;
-  lfoT2 += 2*Math.PI*l2*dt; if(lfoT2>1e6)lfoT2-=1e6;
-  /* baseline */
-  lfoCtx.strokeStyle="rgba(255,255,255,0.08)";lfoCtx.lineWidth=1;
-  lfoCtx.beginPath();lfoCtx.moveTo(0,H/2);lfoCtx.lineTo(W,H/2);lfoCtx.stroke();
-  /* LFO1 (to filter) */
-  lfoCtx.strokeStyle="rgba(95,255,176,0.95)";lfoCtx.lineWidth=1.8;
-  lfoCtx.beginPath();
-  for(let x=0;x<=W;x+=2){
-    const ph=lfoT1+(x/W)*2*Math.PI;
-    const y=H/2+Math.sin(ph)*(H*0.40*Math.max(0.15,live[22]*6/6));
-    if(x===0)lfoCtx.moveTo(x,y);else lfoCtx.lineTo(x,y);
-  }
-  lfoCtx.stroke();
-  /* LFO2 (to pitch) */
-  lfoCtx.strokeStyle="rgba(255,184,74,0.95)";lfoCtx.lineWidth=1.6;
-  lfoCtx.beginPath();
-  for(let x=0;x<=W;x+=2){
-    const ph=lfoT2+(x/W)*2*Math.PI;
-    const y=H/2+Math.sin(ph)*(H*0.40*Math.max(0.15,live[24]*2));
-    if(x===0)lfoCtx.moveTo(x,y);else lfoCtx.lineTo(x,y);
-  }
-  lfoCtx.stroke();
-  /* leading dots */
-  lfoCtx.fillStyle="rgba(95,255,176,1)";
-  lfoCtx.beginPath();lfoCtx.arc(6, H/2+Math.sin(lfoT1)*(H*0.40*Math.max(0.15,live[22]*6/6)), 3, 0, 2*Math.PI);lfoCtx.fill();
-  lfoCtx.fillStyle="rgba(255,184,74,1)";
-  lfoCtx.beginPath();lfoCtx.arc(6, H/2+Math.sin(lfoT2)*(H*0.40*Math.max(0.15,live[24]*2)), 3, 0, 2*Math.PI);lfoCtx.fill();
-  /* labels */
-  lfoCtx.fillStyle="rgba(95,255,176,0.6)";lfoCtx.font="8.5px -apple-system,sans-serif";
-  lfoCtx.fillText("LFO1 → filter",4,10);
-  lfoCtx.fillStyle="rgba(255,184,74,0.6)";
-  lfoCtx.fillText("LFO2 → pitch",W-60,10);
-  requestAnimationFrame(drawLfo);
-}
-requestAnimationFrame(drawLfo);
-
-/* ---- oscilloscope (simulated) ---- */
-const oscCv=document.getElementById("oscCv");
-const oscCtx=oscCv.getContext("2d");
-function fitOsc(){const r=oscCv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
-  oscCv.width=r.width*dpr;oscCv.height=r.height*dpr;oscCtx.setTransform(dpr,0,0,dpr,0,0);}
-new ResizeObserver(fitOsc).observe(oscCv);fitOsc();
-let scopeT=0, lastOscT=performance.now();
-function drawOsc(now){
-  const dt=Math.min(0.05,(now-lastOscT)/1000);lastOscT=now;
-  const W=oscCv.clientWidth,H=oscCv.clientHeight;
-  oscCtx.clearRect(0,0,W,H);
-  /* composite waveform: sum of osc1+osc2 with detune beating */
-  const d1 = (live[2]-0.5)*100;
-  const d2 = (live[5]-0.5)*100;
-  const fc=20*Math.pow(1000,live[8]);
-  const baseHz = 220; /* assume note ~A3 for visual */
-  const hz1 = baseHz * Math.pow(2, d1/1200);
-  const hz2 = baseHz * Math.pow(2, d2/1200);
-  const cycles = 1.5;
-  const grad=oscCtx.createLinearGradient(0,0,W,0);
-  grad.addColorStop(0,"rgba(95,255,176,0.95)");
-  grad.addColorStop(0.5,"rgba(159,240,255,0.95)");
-  grad.addColorStop(1,"rgba(95,255,176,0.95)");
-  oscCtx.strokeStyle=grad;oscCtx.lineWidth=1.8;
-  /* L channel */
-  oscCtx.beginPath();
-  for(let x=0;x<=W;x++){
-    const t = scopeT + (x/W)*cycles;
-    const a = Math.sin(t * hz1 / 100);
-    const b = Math.sin(t * hz2 / 100);
-    const y = H*0.5 + (a + b*0.7) * (H*0.32);
-    if(x===0)oscCtx.moveTo(x,y);else oscCtx.lineTo(x,y);
-  }
-  oscCtx.stroke();
-  /* faint R channel offset down */
-  oscCtx.strokeStyle="rgba(255,184,74,0.6)";oscCtx.lineWidth=1.2;
-  oscCtx.beginPath();
-  for(let x=0;x<=W;x++){
-    const t = scopeT + (x/W)*cycles;
-    const a = Math.sin(t * hz1 / 100 + 0.4);
-    const b = Math.sin(t * hz2 / 100 + 0.4);
-    const y = H*0.5 + (a + b*0.7) * (H*0.28);
-    if(x===0)oscCtx.moveTo(x,y);else oscCtx.lineTo(x,y);
-  }
-  oscCtx.stroke();
-  scopeT += cycles*0.5*dt*60; /* scroll */
-  /* stats */
-  document.getElementById("osc-cut").textContent="CUT "+hzFmt(live[8]);
-  document.getElementById("osc-res").textContent="RES "+pct(live[9]);
-  document.getElementById("osc-fx").textContent="FX "+pct(live[25]);
-  requestAnimationFrame(drawOsc);
-}
-requestAnimationFrame(drawOsc);
+/* ---- repaint all on state change ---- */
+casc.onChange((id) => {
+  document.querySelectorAll('.knob').forEach(k => { if (+k.dataset.id === id) paintKnob(k); });
+});
 </script>
 </body>
 </html>

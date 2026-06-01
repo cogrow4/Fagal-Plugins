@@ -68,6 +68,7 @@ static inline float soft_ceiling(float x, float c) {
 
 #define NUM_PARAMS 9
 #define MAX_INSTANCES 8
+#include "../_shared/meter_ring.h"
 
 typedef struct {
     /* normalised params */
@@ -78,6 +79,11 @@ typedef struct {
 
     /* peak meters */
     float peakL, peakR;
+
+    /* output ring buffer for UI meters */
+    float meter_buf[METER_BUF];
+    int   meter_idx;
+    int   meter_filled;
 
     double sample_rate;
     int    max_block;
@@ -96,6 +102,9 @@ static void boost_setup(Boost* b, double sr) {
     b->sCeil = 0.95f;
     b->peakL = 0.0f;
     b->peakR = 0.0f;
+    meter_ring_clear(b->meter_buf);
+    b->meter_idx = 0;
+    b->meter_filled = 0;
 }
 
 __attribute__((export_name("dsp_create")))
@@ -249,6 +258,7 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
 
         if (out_ch >= 2) { out[n*out_ch + 0] = xL; out[n*out_ch + 1] = xR; }
         else             { out[n*out_ch + 0] = (xL + xR) * 0.5f; }
+        meter_ring_write(b->meter_buf, &b->meter_idx, &b->meter_filled, xL, xR);
     }
 
     b->peakL  = peakL;  b->peakR  = peakR;
@@ -259,6 +269,18 @@ void dsp_process(int32_t handle, int32_t in_ptr, int32_t out_ptr,
 
 __attribute__((export_name("dsp_get_latency")))
 int32_t dsp_get_latency(int32_t handle) { (void)handle; return 0; }
+
+__attribute__((export_name("dsp_get_meter")))
+int32_t dsp_get_meter(int32_t handle, int32_t ptr, int32_t max_samples) {
+    if (handle < 0 || handle >= MAX_INSTANCES) return 0;
+    Boost* b = &g_inst[handle];
+    if (max_samples > METER_FRAMES) max_samples = METER_FRAMES;
+    if (max_samples < 1) return 0;
+    float* out = (float*)(uintptr_t)ptr;
+    int n = meter_ring_read(b->meter_buf, b->meter_filled, b->meter_idx,
+                            max_samples, out);
+    return n;
+}
 
 __attribute__((export_name("dsp_get_tail")))
 int32_t dsp_get_tail(int32_t handle) { (void)handle; return 0; }
