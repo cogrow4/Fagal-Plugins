@@ -1,0 +1,8 @@
+{
+  "casc_preset_version": "0.1",
+  "plugin_id": "org.casc.examples.reverb",
+  "plugin_version": "1.0.0",
+  "name": "Large Hall",
+  "author": "CASC Examples",
+  "params": { "0": 0.9, "1": 0.35, "2": 1.0, "3": 0.45 }
+}

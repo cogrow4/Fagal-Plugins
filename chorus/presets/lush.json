@@ -1,0 +1,8 @@
+{
+  "casc_preset_version": "0.1",
+  "plugin_id": "org.casc.examples.chorus",
+  "plugin_version": "2.0.0",
+  "name": "Lush Ensemble",
+  "author": "Fagal Plugins",
+  "params": { "0": 0.18, "1": 0.7, "2": 0.55, "3": 1.0, "4": 0.9, "5": 0.65, "6": 0.5, "7": 0.5, "8": 0.5 }
+}

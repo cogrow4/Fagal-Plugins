@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Fagal Sculpt</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#12171e; --edge:#232a34;
+    --accent:#5a9cff; --accent2:#3a6cbf; --accent3:#9ff0e8;
+    --text:#e6edf3; --muted:#8b97a7; --track:#222a35;
+  }
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    background:radial-gradient(150% 120% at 50% -10%,#1c2334 0%,var(--bg) 60%);
+    color:var(--text);overflow:hidden}
+  .wrap{height:100%;display:flex;flex-direction:column;padding:18px 22px 14px}
+
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .brand{display:flex;flex-direction:column;gap:3px}
+  .wordmark{font-size:13px;font-weight:700;letter-spacing:.42em;text-transform:uppercase;color:var(--accent)}
+  .wordmark .sep{color:var(--muted);margin:0 .25em}
+  .product{font-size:22px;font-weight:600;letter-spacing:.06em}
+  .product span{color:var(--accent)}
+  .badge{font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;text-align:right;line-height:1.6}
+
+  /* main grid */
+  main{flex:1;display:grid;grid-template-columns:1.4fr 1fr;gap:14px;min-height:0}
+
+  /* frequency-response visualizer (left) */
+  .viz{position:relative;border:1px solid var(--edge);border-radius:14px;
+    background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%);
+    overflow:hidden}
+  .viz canvas{display:block;width:100%;height:100%}
+  .viz .vtag{position:absolute;top:10px;left:14px;font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted)}
+  .viz .vtype{position:absolute;top:10px;right:14px;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);font-weight:600}
+  .viz .vstats{position:absolute;bottom:10px;left:14px;right:14px;display:flex;
+    justify-content:space-between;font-size:10px;letter-spacing:.12em;color:var(--accent2);
+    text-transform:uppercase;font-variant-numeric:tabular-nums}
+
+  /* right column: sections */
+  .right{display:grid;grid-template-rows:auto auto 1fr;gap:14px;min-height:0}
+  .section{border:1px solid var(--edge);border-radius:14px;background:var(--panel);
+    padding:12px 14px 10px;display:flex;flex-direction:column}
+  .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .sec-title{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .knobs{flex:1;display:flex;align-items:center;justify-content:space-around;gap:4px}
+
+  /* type selector pills */
+  .typesel{display:flex;gap:4px}
+  .typesel button{background:var(--panel2);border:1px solid var(--edge);color:var(--muted);
+    font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;padding:5px 7px;border-radius:7px;
+    cursor:pointer;transition:.15s;font-weight:600}
+  .typesel button.on{background:linear-gradient(180deg,var(--accent2),#1f3a73);
+    color:#fff;border-color:var(--accent);box-shadow:0 0 12px rgba(90,156,255,.35)}
+
+  /* knob */
+  .cell{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .knob{position:relative;width:62px;height:62px;cursor:ns-resize;touch-action:none}
+  .knob svg{display:block;overflow:visible}
+  .knob .cap{filter:drop-shadow(0 4px 10px rgba(0,0,0,.45))}
+  .label{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .val{font-size:11px;font-variant-numeric:tabular-nums;color:var(--text);
+    background:var(--panel2);border:1px solid var(--edge);border-radius:6px;
+    padding:2px 7px;min-width:50px;text-align:center}
+
+  footer{margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+  .hint{font-size:10px;color:var(--muted)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px var(--accent);display:inline-block;margin-right:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="wordmark">FAGAL<span class="sep">·</span>PLUGINS</div>
+      <div class="product">Fagal <span>Sculpt</span></div>
+    </div>
+    <div class="badge">state-variable filter · 4 modes<br/>lp · hp · bp · notch</div>
+  </header>
+
+  <main>
+    <div class="viz">
+      <span class="vtag">Frequency Response · LFO + Env</span>
+      <span class="vtype" id="vtype">LOWPASS</span>
+      <canvas id="cv"></canvas>
+      <div class="vstats">
+        <span id="st-cut">CUT 1.4 kHz</span>
+        <span id="st-res">RES 25%</span>
+        <span id="st-mix">MIX 100%</span>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-title">Filter</div>
+          <div class="typesel" id="typesel">
+            <button data-t="0">LP</button>
+            <button data-t="1">HP</button>
+            <button data-t="2">BP</button>
+            <button data-t="3">Notch</button>
+          </div>
+        </div>
+        <div class="knobs" id="knobsFilt"></div>
+      </div>
+      <div class="section">
+        <div class="sec-head"><div class="sec-title">Modulation · Envelope · LFO</div></div>
+        <div class="knobs" id="knobsMod"></div>
+      </div>
+      <div class="section">
+        <div class="sec-head"><div class="sec-title">Output</div></div>
+        <div class="knobs" id="knobsOut"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="hint"><span class="dot"></span>drag knob vertically · double-click to reset · click type pills</div>
+    <div class="badge">Fagal Sculpt v2.0</div>
+  </footer>
+</div>
+
+<script>
+const casc = window.casc || (window.casc = (()=>{
+  const state={};
+  return {
+    _subs:[],
+    setParam(id,v){state[id]=v;},
+    getParam(id){return (id in state)?state[id]:PARAMS_BY_ID[id].def;},
+    subscribe(cb){this._subs.push(cb);}
+  };
+})());
+
+const PARAMS = [
+  {id:0,label:"Cutoff",   sec:"filt",def:0.65,fmt:v=>fmtHz(20*Math.pow(1000,v))},
+  {id:1,label:"Resonance",sec:"filt",def:0.25,fmt:v=>Math.round(v*100)+"%"},
+  {id:2,label:"Drive",    sec:"filt",def:0.0, fmt:v=>Math.round(v*100)+"%"},
+  {id:7,label:"Keytrack", sec:"filt",def:0.0, fmt:v=>Math.round(v*100)+"%"},
+  {id:3,label:"Env Amt",  sec:"mod", def:0.0, fmt:v=>Math.round(v*100)+"%"},
+  {id:4,label:"Env Sens", sec:"mod", def:0.5, fmt:v=>Math.round(v*100)+"%"},
+  {id:5,label:"LFO Rate", sec:"mod", def:0.0, fmt:v=>(0.05+v*11.95).toFixed(2)+" Hz"},
+  {id:6,label:"LFO Amt",  sec:"mod", def:0.0, fmt:v=>Math.round(v*100)+"%"},
+  {id:9,label:"Mix",      sec:"out", def:1.0, fmt:v=>Math.round(v*100)+"%"},
+];
+const PARAMS_BY_ID={}; PARAMS.forEach(p=>PARAMS_BY_ID[p.id]=p);
+PARAMS_BY_ID[8]={id:8,def:0.0};
+
+const TYPE_NAMES=["LOWPASS","HIGHPASS","BANDPASS","NOTCH"];
+function typeIndex(v){return Math.max(0,Math.min(3,Math.round(v*3.999)));}
+function getType(){return typeIndex(casc.getParam(8));}
+function fmtHz(h){
+  if (h<1000) return Math.round(h)+" Hz";
+  return (h/1000).toFixed(h<10000?1:2)+" kHz";
+}
+
+const live={};
+PARAMS.forEach(p=>live[p.id]=casc.getParam(p.id));
+live[8]=casc.getParam(8);
+
+/* ---- knob factory ---- */
+const ARC_START=-135, ARC_END=135;
+function knobSVG(){
+  return `<svg width="62" height="62" viewBox="0 0 86 86">
+    <circle cx="43" cy="43" r="36" fill="none" stroke="var(--track)" stroke-width="6"
+      stroke-linecap="round" stroke-dasharray="170 400" transform="rotate(135 43 43)"/>
+    <circle class="arc" cx="43" cy="43" r="36" fill="none" stroke="var(--accent)" stroke-width="6"
+      stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(135 43 43)"/>
+    <g class="cap">
+      <circle cx="43" cy="43" r="27" fill="var(--panel2)" stroke="var(--edge)" stroke-width="1.5"/>
+      <line class="ind" x1="43" y1="43" x2="43" y2="22" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </svg>`;
+}
+function makeKnob(p){
+  const cell=document.createElement("div");cell.className="cell";
+  const knob=document.createElement("div");knob.className="knob";knob.innerHTML=knobSVG();
+  const label=document.createElement("div");label.className="label";label.textContent=p.label;
+  const val=document.createElement("div");val.className="val";
+  cell.append(knob,label,val);
+  let value=casc.getParam(p.id);
+  const arc=knob.querySelector(".arc"), ind=knob.querySelector(".ind");
+  const CIRC=2*Math.PI*36;
+  function render(){
+    const ang=ARC_START+(ARC_END-ARC_START)*value;
+    ind.setAttribute("transform",`rotate(${ang} 43 43)`);
+    arc.setAttribute("stroke-dasharray",`${value*(270/360)*CIRC} 400`);
+    val.textContent=p.fmt(value);
+  }
+  function set(v,push){
+    value=Math.max(0,Math.min(1,v));live[p.id]=value;render();
+    if(push)casc.setParam(p.id,value);
+  }
+  render();
+  let dragging=false,lastY=0;
+  knob.addEventListener("pointerdown",e=>{dragging=true;lastY=e.clientY;knob.setPointerCapture(e.pointerId);});
+  knob.addEventListener("pointermove",e=>{if(!dragging)return;const dy=lastY-e.clientY;lastY=e.clientY;set(value+dy*0.005,true);});
+  knob.addEventListener("pointerup",()=>dragging=false);
+  knob.addEventListener("dblclick",()=>set(p.def,true));
+  casc.subscribe((id,v)=>{if(id===p.id)set(v,false);});
+  return cell;
+}
+PARAMS.filter(p=>p.sec==="filt").forEach(p=>document.getElementById("knobsFilt").appendChild(makeKnob(p)));
+PARAMS.filter(p=>p.sec==="mod").forEach(p=>document.getElementById("knobsMod").appendChild(makeKnob(p)));
+PARAMS.filter(p=>p.sec==="out").forEach(p=>document.getElementById("knobsOut").appendChild(makeKnob(p)));
+
+/* ---- type pills ---- */
+const typesel=document.getElementById("typesel");
+const vtype=document.getElementById("vtype");
+function syncType(){
+  const t=getType();
+  vtype.textContent=TYPE_NAMES[t];
+  [...typesel.children].forEach(b=>b.classList.toggle("on",+b.dataset.t===t));
+}
+[...typesel.children].forEach(b=>{
+  b.addEventListener("click",()=>{
+    const t=+b.dataset.t;live[8]=t/3;casc.setParam(8,t/3);syncType();
+  });
+});
+casc.subscribe((id,v)=>{if(id===8){live[8]=v;syncType();}});
+syncType();
+
+/* ---- live frequency-response visualizer ----
+ * Computes |H(f)| for a Chamberlin SVF at the current effective cutoff,
+ * with a moving cursor that follows LFO+env modulation. */
+const cv=document.getElementById("cv");
+const ctx=cv.getContext("2d");
+function fit(){
+  const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+new ResizeObserver(fit).observe(cv);fit();
+
+/* Closed-form magnitude squared for the SVF (used to draw the curve). */
+function svfMagHz(fc, q, fHz, type){
+  const w  = 2*Math.PI*fHz;
+  const wc = 2*Math.PI*fc;
+  const s  = w/wc;
+  /* |H_LP|^2  = 1 / (1 + (s^2 - 1)^2 / q^2) approximated  */
+  const s2 = s*s;
+  const num = (s2 - 1.0);
+  const lp  = 1.0 / Math.sqrt(1.0 + (num*num)/(q*q));
+  const hp  = (s2) / Math.sqrt(s2*s2 + ((s2 - 1.0)*(s2 - 1.0))/(q*q));
+  const bp  = (s/q) / Math.sqrt(((s2-1)*(s2-1))/(q*q) + 1.0);
+  switch(type){
+    case 0: return lp;
+    case 1: return hp;
+    case 2: return bp;
+    case 3: return Math.max(0, 1.0 - hp); /* notch */
+  }
+  return lp;
+}
+
+let lfoPhase=0,lastT=performance.now();
+function draw(now){
+  const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+  const W=cv.clientWidth,H=cv.clientHeight;
+  ctx.clearRect(0,0,W,H);
+
+  const fcBase = 20*Math.pow(1000,live[0]);
+  const q = 1.0 - live[1]*0.97;
+  const effQ = Math.max(0.03,q);
+  const lfoAmt= live[6];
+  const envAmt= live[3];
+  const envSens=live[4];
+  const type=getType();
+
+  /* advance lfo at the same rate the DSP does */
+  const lfoHz=0.05+live[5]*11.95;
+  lfoPhase += 2*Math.PI*lfoHz*dt;
+  if (lfoPhase>1e6) lfoPhase-=1e6;
+  const lfo = Math.sin(lfoPhase);
+  /* simulated envelope follower (just a slow sine) */
+  const envSig = 0.5+0.5*Math.sin(now*0.0011);
+  const envOct  = envAmt * (envSig*2-1) * 3.0;
+  const lfoOct  = lfo*lfoAmt*3.0;
+  const fcEff   = fcBase * Math.pow(2, lfoOct+envOct);
+
+  /* dB grid */
+  ctx.strokeStyle="rgba(255,255,255,0.05)";ctx.lineWidth=1;
+  for(let db=0;db>= -36;db-=12){
+    const y = H*0.18 + ((-db)/36)*(H*0.65);
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,0.18)";
+    ctx.font="9px -apple-system,sans-serif";
+    ctx.fillText(db+" dB", 6, y-2);
+  }
+
+  /* freq log grid */
+  const freqs=[50,100,200,500,1000,2000,5000,10000];
+  const fMin=20, fMax=20000;
+  function xOf(f){return Math.log(f/fMin)/Math.log(fMax/fMin) * (W-10) + 5;}
+  for(const f of freqs){
+    const x=xOf(f);
+    ctx.strokeStyle="rgba(255,255,255,0.05)";
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,0.18)";
+    ctx.font="9px -apple-system,sans-serif";
+    const lbl=f>=1000?(f/1000)+"k":f;
+    ctx.fillText(lbl+"Hz", x+2, H-6);
+  }
+
+  /* the response curve */
+  ctx.lineWidth=2.4;
+  const grad=ctx.createLinearGradient(0,0,W,0);
+  grad.addColorStop(0,"rgba(90,156,255,0.0)");
+  grad.addColorStop(0.1,"rgba(90,156,255,0.7)");
+  grad.addColorStop(1,"rgba(159,240,232,0.95)");
+  ctx.strokeStyle=grad;
+  ctx.beginPath();
+  for(let px=0;px<=W;px++){
+    const f=fMin*Math.pow(fMax/fMin,px/(W-1));
+    const mag = svfMagHz(fcEff, effQ, f, type);
+    const db = 20*Math.log10(Math.max(0.0001,mag));
+    const y  = H*0.18 - (Math.max(-36,Math.min(0,db))/36)*(H*0.65);
+    if(px===0)ctx.moveTo(px,y);else ctx.lineTo(px,y);
+  }
+  ctx.stroke();
+
+  /* the static (no-mod) reference curve at fcBase */
+  ctx.lineWidth=1.2;
+  ctx.strokeStyle="rgba(255,255,255,0.18)";
+  ctx.beginPath();
+  for(let px=0;px<=W;px++){
+    const f=fMin*Math.pow(fMax/fMin,px/(W-1));
+    const mag = svfMagHz(fcBase, effQ, f, type);
+    const db = 20*Math.log10(Math.max(0.0001,mag));
+    const y  = H*0.18 - (Math.max(-36,Math.min(0,db))/36)*(H*0.65);
+    if(px===0)ctx.moveTo(px,y);else ctx.lineTo(px,y);
+  }
+  ctx.stroke();
+
+  /* moving cursor at fcEff */
+  if (fcEff>=fMin && fcEff<=fMax) {
+    const x = xOf(fcEff);
+    ctx.strokeStyle="rgba(90,156,255,0.5)";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+    ctx.fillStyle="rgba(90,156,255,0.9)";
+    ctx.beginPath();ctx.arc(x,H*0.18,4,0,2*Math.PI);ctx.fill();
+  }
+
+  /* stats */
+  document.getElementById("st-cut").textContent="CUT "+fmtHz(fcEff);
+  document.getElementById("st-res").textContent="RES "+Math.round(live[1]*100)+"%";
+  document.getElementById("st-mix").textContent="MIX "+Math.round(live[9]*100)+"%";
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

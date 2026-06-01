@@ -1,0 +1,18 @@
+# Build artifacts
+*.o
+*.obj
+*.wasm.map
+*.wasm.dSYM/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local test output
+*.casc.bak

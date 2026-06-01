@@ -1,0 +1,32 @@
+{
+  "casc_version": "0.1",
+  "id": "org.casc.examples.chorus",
+  "name": "Fagal Ensemble",
+  "version": "2.0.0",
+  "vendor": "Fagal Plugins",
+  "url": "https://github.com/cogrow4/CASC",
+  "description": "Fagal Ensemble — expansive multi-voice modulation engine. A bank of up to six phase-offset, independently-modulated delay voices with selectable Chorus / Ensemble / Flanger modes, stereo width, tone shaping, and feedback. Lush detune clouds, shimmering ensembles, and jet-flange sweeps.",
+  "category": "chorus",
+  "features": ["audio-effect", "stereo"],
+  "audio_inputs": [ { "name": "main", "channels": 2 } ],
+  "audio_outputs": [ { "name": "main", "channels": 2 } ],
+  "midi_input": false,
+  "midi_output": false,
+  "mpe_support": false,
+  "note_ports": [],
+  "latency_frames": 0,
+  "tail_seconds": 0.0,
+  "hard_realtime": true,
+  "params": [
+    { "id": 0, "name": "Rate",     "short_name": "Rate", "module": "Modulation", "min": 0.0, "max": 1.0, "default": 0.28, "unit": "Hz", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 1, "name": "Depth",    "short_name": "Dpth", "module": "Modulation", "min": 0.0, "max": 1.0, "default": 0.45, "unit": "%",  "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 2, "name": "Mix",      "short_name": "Mix",  "module": "Output",     "min": 0.0, "max": 1.0, "default": 0.5,  "unit": "%",  "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 3, "name": "Voices",   "short_name": "Vcs",  "module": "Voices",     "min": 0.0, "max": 1.0, "default": 0.6,  "unit": "",   "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 4, "name": "Width",    "short_name": "Wdth", "module": "Voices",     "min": 0.0, "max": 1.0, "default": 0.8,  "unit": "%",  "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 5, "name": "Tone",     "short_name": "Tone", "module": "Voices",     "min": 0.0, "max": 1.0, "default": 0.6,  "unit": "%",  "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 6, "name": "Feedback", "short_name": "Fdbk", "module": "Modulation", "min": 0.0, "max": 1.0, "default": 0.5,  "unit": "%",  "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 7, "name": "Mode",     "short_name": "Mode", "module": "Voices",     "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "",   "flags": ["automatable"], "steps": 3 },
+    { "id": 8, "name": "Center",   "short_name": "Cntr", "module": "Modulation", "min": 0.0, "max": 1.0, "default": 0.45, "unit": "ms", "flags": ["automatable","modulatable"], "steps": null }
+  ],
+  "gui": { "type": "html", "entry": "ui.html", "width": 880, "height": 540, "resizable": false }
+}

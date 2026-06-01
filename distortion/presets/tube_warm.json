@@ -1,0 +1,11 @@
+{
+  "casc_preset_version": "0.1",
+  "plugin_id": "org.casc.examples.distortion",
+  "plugin_version": "2.0.0",
+  "name": "Tube Warm",
+  "author": "Fagal Plugins",
+  "params": {
+    "0": 0.35, "1": 0.52, "2": 0.6, "3": 0.55,
+    "4": 0.15, "5": 0.95, "6": 0.0, "7": 0.8, "8": 1.0
+  }
+}

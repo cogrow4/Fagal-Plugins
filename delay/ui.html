@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Fagal Echo</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#12171e; --edge:#232a34;
+    --accent:#e0a35a; --accent2:#a8763a; --text:#e6edf3; --muted:#8b97a7;
+    --track:#222a35; --glow:rgba(224,163,90,.55);
+  }
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    background:radial-gradient(150% 120% at 50% -10%,#1a2230 0%,var(--bg) 58%);
+    color:var(--text);overflow:hidden}
+  .wrap{height:100%;display:flex;flex-direction:column;padding:16px 20px 14px}
+
+  /* ---- header / wordmark ---- */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .brand{display:flex;flex-direction:column;gap:3px}
+  .wordmark{font-size:12px;font-weight:700;letter-spacing:.42em;text-transform:uppercase;color:var(--accent)}
+  .product{font-size:21px;font-weight:600;letter-spacing:.06em}
+  .product span{color:var(--accent)}
+  .hbadge{font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;text-align:right;line-height:1.6}
+
+  /* ---- visualizer ---- */
+  .viz{position:relative;height:120px;border:1px solid var(--edge);border-radius:12px;
+    background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%);
+    overflow:hidden;margin-bottom:12px;box-shadow:inset 0 0 24px rgba(0,0,0,.45)}
+  .viz canvas{display:block;width:100%;height:100%}
+  .viz .vlabel{position:absolute;top:8px;left:12px;font-size:9px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--muted)}
+
+  /* ---- sections ---- */
+  .grid{flex:1;display:grid;grid-template-columns:repeat(12,1fr);gap:11px;min-height:0}
+  .section{background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%);
+    border:1px solid var(--edge);border-radius:12px;padding:12px 12px 8px;
+    display:flex;flex-direction:column}
+  .stitle{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);
+    margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .stitle::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 8px var(--glow)}
+  .row{display:flex;flex:1;align-items:center;justify-content:space-around;gap:4px}
+
+  /* spans */
+  .s-delay{grid-column:span 4}
+  .s-tone{grid-column:span 3}
+  .s-mod{grid-column:span 3}
+  .s-out{grid-column:span 2}
+  .s-route{grid-column:span 4}
+  .s-drive{grid-column:span 3}
+  .s-mix{grid-column:span 5}
+
+  /* ---- knobs ---- */
+  .cell{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .knob{position:relative;width:62px;height:62px;cursor:ns-resize;touch-action:none}
+  .knob svg{display:block;overflow:visible}
+  .knob .cap{filter:drop-shadow(0 4px 10px rgba(0,0,0,.45))}
+  .label{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .val{font-size:11px;font-variant-numeric:tabular-nums;color:var(--text);
+    background:var(--panel2);border:1px solid var(--edge);border-radius:6px;
+    padding:2px 7px;min-width:50px;text-align:center}
+
+  /* ---- toggles ---- */
+  .toggle{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .sw{width:58px;height:28px;border-radius:16px;background:var(--track);
+    border:1px solid var(--edge);position:relative;cursor:pointer;transition:.18s}
+  .sw .nub{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+    background:#3a424e;transition:.18s;box-shadow:0 2px 5px rgba(0,0,0,.5)}
+  .sw.on{background:var(--accent2);border-color:var(--accent)}
+  .sw.on .nub{left:32px;background:var(--accent);box-shadow:0 0 10px var(--glow)}
+
+  footer{margin-top:11px;display:flex;justify-content:space-between;align-items:center}
+  .hint{font-size:10px;color:var(--muted)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px var(--accent);display:inline-block;margin-right:6px;vertical-align:middle}
+  .badge{font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="wordmark">Fagal Plugins</div>
+      <div class="product">Fagal<span>·</span>Echo</div>
+    </div>
+    <div class="hbadge">stereo · ping-pong · freeze<br/>tone · mod · drive</div>
+  </header>
+
+  <div class="viz">
+    <div class="vlabel">Echo Taps · time → feedback decay</div>
+    <canvas id="viz"></canvas>
+  </div>
+
+  <div class="grid">
+    <div class="section s-delay">
+      <div class="stitle">Delay</div>
+      <div class="row" data-knobs="0,1,11"></div>
+    </div>
+    <div class="section s-tone">
+      <div class="stitle">Tone (Feedback)</div>
+      <div class="row" data-knobs="3,4"></div>
+    </div>
+    <div class="section s-mod">
+      <div class="stitle">Modulation</div>
+      <div class="row" data-knobs="5,6"></div>
+    </div>
+    <div class="section s-out">
+      <div class="stitle">Width</div>
+      <div class="row" data-knobs="8"></div>
+    </div>
+
+    <div class="section s-route">
+      <div class="stitle">Routing</div>
+      <div class="row" data-toggles="9,10"></div>
+    </div>
+    <div class="section s-drive">
+      <div class="stitle">Drive</div>
+      <div class="row" data-knobs="7"></div>
+    </div>
+    <div class="section s-mix">
+      <div class="stitle">Output</div>
+      <div class="row" data-knobs="2"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="hint"><span class="dot"></span>drag knobs vertically · double-click to reset · click toggles</div>
+    <div class="badge">Fagal Echo v2.0</div>
+  </footer>
+</div>
+
+<script>
+/* ---- CASC UI <-> DSP bridge (forward-compatible shim) ----
+ * The host injects window.casc with setParam(id,value 0..1), getParam(id),
+ * and subscribe(cb). When run standalone (no host) we provide a stub so the
+ * UI is fully interactive. */
+const casc = window.casc || (window.casc = {
+  _subs:[], _v:{},
+  setParam(id,v){this._v[id]=v;},
+  getParam(id){ return (id in this._v) ? this._v[id] : PARAMS[id].def; },
+  subscribe(cb){this._subs.push(cb)}
+});
+
+const PARAMS = [
+  {id:0, label:"Time",     def:0.25, type:"knob", fmt:v=>{const ms=(0.001+v*1.499)*1000; return ms<1000?Math.round(ms)+" ms":(ms/1000).toFixed(2)+" s";}},
+  {id:1, label:"Feedback", def:0.35, type:"knob", fmt:v=>Math.round(v*98)+"%"},
+  {id:2, label:"Mix",      def:0.35, type:"knob", fmt:v=>Math.round(v*100)+"%"},
+  {id:3, label:"Low Cut",  def:0.10, type:"knob", fmt:v=>Math.round(v*100)+"%"},
+  {id:4, label:"High Cut", def:0.70, type:"knob", fmt:v=>Math.round(v*100)+"%"},
+  {id:5, label:"Rate",     def:0.25, type:"knob", fmt:v=>(0.05+v*7.95).toFixed(2)+" Hz"},
+  {id:6, label:"Depth",    def:0.0,  type:"knob", fmt:v=>Math.round(v*100)+"%"},
+  {id:7, label:"Sat",      def:0.0,  type:"knob", fmt:v=>Math.round(v*100)+"%"},
+  {id:8, label:"Width",    def:1.0,  type:"knob", fmt:v=>Math.round(v*100)+"%"},
+  {id:9, label:"Ping-Pong",def:0.0,  type:"toggle"},
+  {id:10,label:"Freeze",   def:0.0,  type:"toggle"},
+  {id:11,label:"Tap 2",    def:0.0,  type:"knob", fmt:v=>Math.round(v*100)+"%"},
+];
+
+/* live state mirror for the visualizer */
+const state = {};
+PARAMS.forEach(p=>state[p.id]=casc.getParam(p.id));
+
+/* ---------- knob ---------- */
+const ARC_START=-135, ARC_END=135;
+function knobSVG(){
+  return `<svg width="62" height="62" viewBox="0 0 86 86">
+    <circle cx="43" cy="43" r="36" fill="none" stroke="var(--track)" stroke-width="6"
+      stroke-linecap="round" stroke-dasharray="170 400" transform="rotate(135 43 43)"/>
+    <circle class="arc" cx="43" cy="43" r="36" fill="none" stroke="var(--accent)" stroke-width="6"
+      stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(135 43 43)"/>
+    <g class="cap">
+      <circle cx="43" cy="43" r="27" fill="var(--panel)" stroke="var(--edge)" stroke-width="1.5"/>
+      <line class="ind" x1="43" y1="43" x2="43" y2="22" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </svg>`;
+}
+function makeKnob(p){
+  const cell=document.createElement("div");cell.className="cell";
+  const knob=document.createElement("div");knob.className="knob";knob.innerHTML=knobSVG();
+  const label=document.createElement("div");label.className="label";label.textContent=p.label;
+  const val=document.createElement("div");val.className="val";
+  cell.append(knob,label,val);
+
+  let value=casc.getParam(p.id);
+  const arc=knob.querySelector(".arc");
+  const ind=knob.querySelector(".ind");
+  const CIRC=2*Math.PI*36;
+
+  function render(){
+    const ang=ARC_START+(ARC_END-ARC_START)*value;
+    ind.setAttribute("transform",`rotate(${ang} 43 43)`);
+    arc.setAttribute("stroke-dasharray",`${value*(270/360)*CIRC} 400`);
+    val.textContent=p.fmt(value);
+    state[p.id]=value;
+  }
+  function set(v,push){
+    value=Math.max(0,Math.min(1,v));render();
+    if(push)casc.setParam(p.id,value);
+  }
+  render();
+
+  let dragging=false,lastY=0;
+  knob.addEventListener("pointerdown",e=>{dragging=true;lastY=e.clientY;knob.setPointerCapture(e.pointerId);});
+  knob.addEventListener("pointermove",e=>{
+    if(!dragging)return;
+    const dy=lastY-e.clientY;lastY=e.clientY;
+    set(value+dy*0.005,true);
+  });
+  knob.addEventListener("pointerup",()=>dragging=false);
+  knob.addEventListener("dblclick",()=>set(p.def,true));
+  casc.subscribe((id,v)=>{if(id===p.id)set(v,false);});
+  return cell;
+}
+
+/* ---------- toggle ---------- */
+function makeToggle(p){
+  const wrap=document.createElement("div");wrap.className="toggle";
+  const sw=document.createElement("div");sw.className="sw";
+  sw.innerHTML='<div class="nub"></div>';
+  const label=document.createElement("div");label.className="label";label.textContent=p.label;
+  wrap.append(sw,label);
+
+  let on = casc.getParam(p.id) >= 0.5;
+  function render(){ sw.classList.toggle("on",on); state[p.id]=on?1:0; }
+  function set(v,push){ on=v; render(); if(push)casc.setParam(p.id,on?1:0); }
+  render();
+  sw.addEventListener("click",()=>set(!on,true));
+  casc.subscribe((id,v)=>{if(id===p.id)set(v>=0.5,false);});
+  return wrap;
+}
+
+/* ---------- mount sections ---------- */
+function mount(){
+  document.querySelectorAll("[data-knobs]").forEach(row=>{
+    row.dataset.knobs.split(",").forEach(id=>{
+      row.appendChild(makeKnob(PARAMS[+id]));
+    });
+  });
+  document.querySelectorAll("[data-toggles]").forEach(row=>{
+    row.dataset.toggles.split(",").forEach(id=>{
+      row.appendChild(makeToggle(PARAMS[+id]));
+    });
+  });
+}
+mount();
+
+/* ---------- live echo-tap visualizer ----------
+ * Renders the dry impulse plus a train of decaying echo taps.
+ * Tap spacing = Time, height = Feedback^n * Mix, tinted by Tone/Drive.
+ * The whole field scrolls left over time so it feels alive. */
+const cv=document.getElementById("viz");
+const ctx=cv.getContext("2d");
+let scroll=0;
+
+function resize(){
+  const r=cv.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  cv.width=r.width*dpr; cv.height=r.height*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize",resize);
+resize();
+
+function draw(){
+  const W=cv.clientWidth, H=cv.clientHeight, mid=H*0.5;
+  ctx.clearRect(0,0,W,H);
+
+  /* baseline */
+  ctx.strokeStyle="rgba(139,151,167,.22)";
+  ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,mid);ctx.lineTo(W,mid);ctx.stroke();
+
+  const time = state[0]??0.25;
+  const fb   = state[1]??0.35;
+  const mix  = state[2]??0.35;
+  const hicut= state[4]??0.7;
+  const sat  = state[7]??0.0;
+  const ping = state[9]?1:0;
+  const freeze = state[10]?1:0;
+
+  /* map Time(0..1.5s) to pixel spacing across the canvas */
+  const sec = 0.001 + time*1.499;
+  const spacing = 26 + sec*(W*0.42)/1.5;   /* px between taps */
+  const fbEff = freeze ? 0.999 : fb*0.98;
+
+  /* scroll speed proportional to inverse time (faster echoes move faster) */
+  scroll += 0.4 + (1.2*(1-time));
+  if(scroll>spacing) scroll-=spacing;
+
+  /* accent tint shifts toward bright with hicut, warmer with sat */
+  const rC=224, gC=Math.round(120+hicut*60), bC=Math.round(90 - sat*30);
+
+  let x = 18 - scroll;
+  let amp = 1.0;
+  let n = 0;
+  while(x < W && n < 200){
+    const h = (mid-10) * amp * (0.35 + mix*0.65);
+    const fade = Math.min(1, amp*1.4);
+    /* ping-pong: alternate taps up/down */
+    const up = (ping && (n%2===1)) ? -1 : 1;
+    const grad = ctx.createLinearGradient(0, mid-h, 0, mid+h);
+    grad.addColorStop(0, `rgba(${rC},${gC},${bC},${0.85*fade})`);
+    grad.addColorStop(1, `rgba(${Math.round(rC*0.6)},${Math.round(gC*0.55)},${bC},${0.15*fade})`);
+    ctx.fillStyle=grad;
+    const bw=4;
+    if(ping){
+      if(up>0) ctx.fillRect(x-bw/2, mid-h, bw, h);
+      else     ctx.fillRect(x-bw/2, mid,   bw, h);
+    } else {
+      ctx.fillRect(x-bw/2, mid-h, bw, h*2);
+    }
+    /* cap glow */
+    ctx.fillStyle=`rgba(${rC},${gC+40},${bC},${fade})`;
+    ctx.beginPath();
+    ctx.arc(x, ping ? (up>0?mid-h:mid+h) : mid-h, 2.4, 0, Math.PI*2);
+    ctx.fill();
+
+    x += spacing;
+    amp *= fbEff;
+    if(amp < 0.02 && !freeze) break;
+    if(freeze && n>40) break;
+    n++;
+  }
+
+  /* freeze indicator */
+  if(freeze){
+    ctx.fillStyle="rgba(224,163,90,.9)";
+    ctx.font="600 10px -apple-system,sans-serif";
+    ctx.fillText("❄ FREEZE", W-78, 18);
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

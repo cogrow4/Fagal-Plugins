@@ -1,0 +1,32 @@
+{
+  "casc_version": "0.1",
+  "id": "org.casc.examples.distortion",
+  "name": "Fagal Drive",
+  "version": "2.0.0",
+  "vendor": "Fagal Plugins",
+  "url": "https://github.com/cogrow4/Fagal-Plugins",
+  "description": "Fagal Drive — multi-mode waveshaper. Five curves (Tube / Tape / Soft / Hard / Fold), pre- and post-tone shaping, bias for asymmetric grit, dynamics (auto-gain) and a soft brick-wall ceiling. Live transfer-curve and signal visualizer.",
+  "category": "distortion",
+  "features": ["audio-effect", "stereo"],
+  "audio_inputs": [ { "name": "main", "channels": 2 } ],
+  "audio_outputs": [ { "name": "main", "channels": 2 } ],
+  "midi_input": false,
+  "midi_output": false,
+  "mpe_support": false,
+  "note_ports": [],
+  "latency_frames": 0,
+  "tail_seconds": 0.0,
+  "hard_realtime": true,
+  "params": [
+    { "id": 0, "name": "Drive",      "short_name": "Drv",  "module": "Shaper",   "min": 0.0, "max": 1.0, "default": 0.45, "unit": "%", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 1, "name": "Bias",       "short_name": "Bias", "module": "Shaper",   "min": 0.0, "max": 1.0, "default": 0.50, "unit": "",  "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 2, "name": "Pre Tone",   "short_name": "Pre",  "module": "Tone",     "min": 0.0, "max": 1.0, "default": 0.65, "unit": "%", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 3, "name": "Post Tone",  "short_name": "Post", "module": "Tone",     "min": 0.0, "max": 1.0, "default": 0.60, "unit": "%", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 4, "name": "Dynamics",   "short_name": "Dyn",  "module": "Dynamics", "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "%", "flags": ["automatable"],               "steps": null },
+    { "id": 5, "name": "Ceiling",    "short_name": "Ceil", "module": "Output",   "min": 0.0, "max": 1.0, "default": 0.95, "unit": "%", "flags": ["automatable"],               "steps": null },
+    { "id": 6, "name": "Mode",       "short_name": "Mode", "module": "Shaper",   "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "",  "flags": ["automatable","stepped"],      "steps": 5 },
+    { "id": 7, "name": "Output",     "short_name": "Out",  "module": "Output",   "min": 0.0, "max": 1.0, "default": 0.8,  "unit": "%", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 8, "name": "Mix",        "short_name": "Mix",  "module": "Output",   "min": 0.0, "max": 1.0, "default": 1.0,  "unit": "%", "flags": ["automatable","modulatable"], "steps": null }
+  ],
+  "gui": { "type": "html", "entry": "ui.html", "width": 900, "height": 560, "resizable": false }
+}

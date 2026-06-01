@@ -1,0 +1,32 @@
+{
+  "casc_version": "0.1",
+  "id": "org.casc.examples.gain",
+  "name": "Fagal Boost",
+  "version": "2.0.0",
+  "vendor": "Fagal Plugins",
+  "url": "https://github.com/cogrow4/Fagal-Plugins",
+  "description": "Fagal Boost — a mastering-grade utility: input trim, gain (dB), polarity invert per channel, channel link, mid/side gain, soft brick-wall ceiling. Live stereo VU + peak meter visualizer.",
+  "category": "utility",
+  "features": ["audio-effect", "stereo"],
+  "audio_inputs": [ { "name": "main", "channels": 2 } ],
+  "audio_outputs": [ { "name": "main", "channels": 2 } ],
+  "midi_input": false,
+  "midi_output": false,
+  "mpe_support": false,
+  "note_ports": [],
+  "latency_frames": 0,
+  "tail_seconds": 0.0,
+  "hard_realtime": true,
+  "params": [
+    { "id": 0, "name": "In Trim",    "short_name": "In",  "module": "Input",   "min": 0.0, "max": 1.0, "default": 0.75, "unit": "dB", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 1, "name": "Gain",       "short_name": "Gn",  "module": "Gain",    "min": 0.0, "max": 1.0, "default": 0.62, "unit": "dB", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 2, "name": "Out Trim",   "short_name": "Out", "module": "Output",  "min": 0.0, "max": 1.0, "default": 0.75, "unit": "dB", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 3, "name": "Mid/Side",   "short_name": "M/S", "module": "Gain",    "min": 0.0, "max": 1.0, "default": 0.50, "unit": "",   "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 4, "name": "Ceiling",    "short_name": "Ceil","module": "Output",  "min": 0.0, "max": 1.0, "default": 0.95, "unit": "%",  "flags": ["automatable"],               "steps": null },
+    { "id": 5, "name": "Link",       "short_name": "Lnk", "module": "Routing", "min": 0.0, "max": 1.0, "default": 1.0,  "unit": "",   "flags": ["automatable"],               "steps": 2 },
+    { "id": 6, "name": "Pol L",      "short_name": "ΦL",  "module": "Routing", "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "",   "flags": ["automatable"],               "steps": 2 },
+    { "id": 7, "name": "Pol R",      "short_name": "ΦR",  "module": "Routing", "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "",   "flags": ["automatable"],               "steps": 2 },
+    { "id": 8, "name": "Bypass",     "short_name": "Byp", "module": "Routing", "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "",   "flags": ["automatable"],               "steps": 2 }
+  ],
+  "gui": { "type": "html", "entry": "ui.html", "width": 900, "height": 480, "resizable": false }
+}

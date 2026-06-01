@@ -1,0 +1,33 @@
+{
+  "casc_version": "0.1",
+  "id": "org.casc.examples.filter",
+  "name": "Fagal Sculpt",
+  "version": "2.0.0",
+  "vendor": "Fagal Plugins",
+  "url": "https://github.com/cogrow4/Fagal-Plugins",
+  "description": "Fagal Sculpt — a pro-grade state-variable filter with four response shapes (LP / HP / BP / Notch), drive stage, envelope follower with adjustable amount and sensitivity, dedicated LFO for sweep, and keytrack. Live frequency-response visualizer.",
+  "category": "filter",
+  "features": ["audio-effect", "stereo"],
+  "audio_inputs": [ { "name": "main", "channels": 2 } ],
+  "audio_outputs": [ { "name": "main", "channels": 2 } ],
+  "midi_input": false,
+  "midi_output": false,
+  "mpe_support": false,
+  "note_ports": [],
+  "latency_frames": 0,
+  "tail_seconds": 0.0,
+  "hard_realtime": true,
+  "params": [
+    { "id": 0,  "name": "Cutoff",    "short_name": "Cut", "module": "Filter", "min": 0.0, "max": 1.0, "default": 0.65, "unit": "Hz", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 1,  "name": "Resonance", "short_name": "Res", "module": "Filter", "min": 0.0, "max": 1.0, "default": 0.25, "unit": "",   "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 2,  "name": "Drive",     "short_name": "Drv", "module": "Drive",  "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "%", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 3,  "name": "Env Amt",   "short_name": "Env", "module": "Env",    "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "%", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 4,  "name": "Env Sens",  "short_name": "Sen", "module": "Env",    "min": 0.0, "max": 1.0, "default": 0.5,  "unit": "",   "flags": ["automatable"],               "steps": null },
+    { "id": 5,  "name": "LFO Rate",  "short_name": "LFO", "module": "LFO",    "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "Hz", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 6,  "name": "LFO Amt",   "short_name": "Amt", "module": "LFO",    "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "%", "flags": ["automatable","modulatable"], "steps": null },
+    { "id": 7,  "name": "Keytrack",  "short_name": "Key", "module": "Filter", "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "",   "flags": ["automatable"],               "steps": null },
+    { "id": 8,  "name": "Type",      "short_name": "Type","module": "Filter", "min": 0.0, "max": 1.0, "default": 0.0,  "unit": "",   "flags": ["automatable","stepped"],      "steps": 4 },
+    { "id": 9,  "name": "Mix",       "short_name": "Mix", "module": "Output", "min": 0.0, "max": 1.0, "default": 1.0,  "unit": "%", "flags": ["automatable","modulatable"], "steps": null }
+  ],
+  "gui": { "type": "html", "entry": "ui.html", "width": 900, "height": 560, "resizable": false }
+}

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Fagal Space</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#12171e; --edge:#232a34;
+    --accent:#5ad1c8; --accent2:#3a8f8a; --text:#e6edf3; --muted:#8b97a7;
+    --track:#222a35;
+  }
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;width:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    background:radial-gradient(150% 130% at 50% -12%,#1a2230 0%,var(--bg) 58%);
+    color:var(--text);overflow:hidden}
+  .wrap{height:100%;display:flex;flex-direction:column;padding:18px 22px 14px}
+
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;
+    padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--edge)}
+  .brand{display:flex;align-items:baseline;gap:14px}
+  .wordmark{font-size:11px;font-weight:700;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--muted)}
+  .product{font-size:30px;font-weight:800;letter-spacing:.20em;text-transform:uppercase;
+    line-height:1;background:linear-gradient(90deg,var(--accent),#9ff0e8);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .tagline{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent2)}
+  .hdr-right{display:flex;align-items:center;gap:14px}
+  .badge{font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
+  .livedot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 12px var(--accent);display:inline-block;margin-right:6px;vertical-align:middle;
+    animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+
+  /* main grid: left visualizer + right section panels */
+  main{flex:1;display:grid;grid-template-columns:330px 1fr;gap:18px;min-height:0}
+
+  /* visualizer */
+  .viz{position:relative;border:1px solid var(--edge);border-radius:14px;
+    background:linear-gradient(180deg,var(--panel2),#0c1016);overflow:hidden;
+    display:flex;flex-direction:column}
+  .viz canvas{flex:1;width:100%;height:100%;display:block}
+  .viz .vlabel{position:absolute;top:12px;left:14px;font-size:10px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--muted)}
+  .viz .vstats{position:absolute;bottom:12px;left:14px;right:14px;display:flex;
+    justify-content:space-between;font-size:10px;letter-spacing:.12em;color:var(--accent2);
+    text-transform:uppercase;font-variant-numeric:tabular-nums}
+
+  /* right column */
+  .sections{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;
+    gap:14px;min-height:0}
+  .sec{border:1px solid var(--edge);border-radius:14px;background:var(--panel);
+    padding:12px 14px;display:flex;flex-direction:column;min-height:0;
+    transition:opacity .18s,border-color .18s}
+  .sec.off{opacity:.4}
+  .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .sec-title{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+  .sec-title .accent{color:var(--accent)}
+  .sec-knobs{flex:1;display:flex;align-items:center;justify-content:space-around;gap:4px}
+
+  /* toggle switch */
+  .sw{position:relative;width:38px;height:20px;border-radius:11px;background:var(--track);
+    border:1px solid var(--edge);cursor:pointer;transition:background .18s}
+  .sw .nub{position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;
+    background:var(--muted);transition:transform .18s,background .18s}
+  .sw.on{background:rgba(90,209,200,.22);border-color:var(--accent2)}
+  .sw.on .nub{transform:translateX(18px);background:var(--accent);
+    box-shadow:0 0 10px var(--accent)}
+
+  /* knob */
+  .cell{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .knob{position:relative;width:62px;height:62px;cursor:ns-resize;touch-action:none}
+  .knob svg{display:block;overflow:visible}
+  .knob .cap{filter:drop-shadow(0 3px 8px rgba(0,0,0,.45))}
+  .label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .val{font-size:10px;font-variant-numeric:tabular-nums;color:var(--text);
+    background:var(--panel2);border:1px solid var(--edge);border-radius:5px;
+    padding:2px 6px;min-width:42px;text-align:center}
+
+  footer{margin-top:12px;display:flex;justify-content:space-between;align-items:center}
+  .hint{font-size:10px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div>
+        <div class="wordmark">Fagal Plugins</div>
+        <div class="product">Space</div>
+      </div>
+      <div class="tagline">multi-section reverb</div>
+    </div>
+    <div class="hdr-right">
+      <div class="badge"><span class="livedot"></span>algorithmic · grain · shimmer · convolution</div>
+      <div class="badge">v2.0</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="viz">
+      <div class="vlabel">Decay Field</div>
+      <canvas id="viz"></canvas>
+      <div class="vstats">
+        <span id="st-size">SIZE 50%</span>
+        <span id="st-decay">DECAY 50%</span>
+        <span id="st-mix">MIX 33%</span>
+      </div>
+    </div>
+
+    <div class="sections" id="sections"></div>
+  </main>
+
+  <footer>
+    <div class="hint"><span class="livedot"></span>drag knobs vertically · double-click to reset · click headers to toggle sections</div>
+    <div class="badge">Fagal Plugins · Space</div>
+  </footer>
+</div>
+
+<script>
+/* ---- CASC UI <-> DSP bridge (forward-compatible shim) ---- */
+const casc = window.casc || (window.casc = {
+  _subs:[], _vals:{}, 
+  setParam(id,v){this._vals[id]=v;},
+  getParam(id){ return (id in this._vals) ? this._vals[id] : (DEF[id]??0); },
+  subscribe(cb){this._subs.push(cb)}
+});
+
+/* defaults indexed by id (must match manifest) */
+const DEF = [0.5,0.5,0.5,1.0,0.4,0.3,0.25,0.5,0.1,0.8,1,1,1,1,0.33];
+
+/* live param cache for visualizer */
+const STATE = DEF.slice();
+
+const fmtPct = v=>Math.round(v*100)+"%";
+
+/* section definitions: each has a toggle id + knob params */
+const SECTIONS = [
+  { name:["Algo","rithmic"], toggle:10, knobs:[
+    {id:0,label:"Size",fmt:fmtPct},
+    {id:1,label:"Decay",fmt:fmtPct},
+    {id:2,label:"Damp",fmt:fmtPct},
+    {id:3,label:"Width",fmt:fmtPct},
+  ]},
+  { name:["Diffu","sion / Grain"], toggle:11, knobs:[
+    {id:4,label:"Diffusion",fmt:fmtPct},
+  ]},
+  { name:["Modu","lation"], toggle:12, knobs:[
+    {id:5,label:"Rate",fmt:fmtPct},
+    {id:6,label:"Depth",fmt:fmtPct},
+  ]},
+  { name:["Early","Reflect"], toggle:13, knobs:[
+    {id:7,label:"Level",fmt:fmtPct},
+    {id:8,label:"Low Cut",fmt:fmtPct},
+    {id:9,label:"High Cut",fmt:fmtPct},
+  ]},
+];
+
+const ARC_START=-135, ARC_END=135, R=26, CIRC=2*Math.PI*R;
+function knobSVG(){
+  return `<svg width="62" height="62" viewBox="0 0 62 62">
+    <circle cx="31" cy="31" r="${R}" fill="none" stroke="var(--track)" stroke-width="5"
+      stroke-linecap="round" stroke-dasharray="${0.75*CIRC} 400" transform="rotate(135 31 31)"/>
+    <circle class="arc" cx="31" cy="31" r="${R}" fill="none" stroke="var(--accent)" stroke-width="5"
+      stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(135 31 31)"/>
+    <g class="cap">
+      <circle cx="31" cy="31" r="19" fill="var(--panel2)" stroke="var(--edge)" stroke-width="1.5"/>
+      <line class="ind" x1="31" y1="31" x2="31" y2="15" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+  </svg>`;
+}
+
+function makeKnob(p){
+  const cell=document.createElement("div");cell.className="cell";
+  const knob=document.createElement("div");knob.className="knob";knob.innerHTML=knobSVG();
+  const label=document.createElement("div");label.className="label";label.textContent=p.label;
+  const val=document.createElement("div");val.className="val";
+  cell.append(knob,label,val);
+
+  let value=casc.getParam(p.id); STATE[p.id]=value;
+  const arc=knob.querySelector(".arc");
+  const ind=knob.querySelector(".ind");
+  const def=DEF[p.id];
+
+  function render(){
+    const ang=ARC_START+(ARC_END-ARC_START)*value;
+    ind.setAttribute("transform",`rotate(${ang} 31 31)`);
+    arc.setAttribute("stroke-dasharray",`${value*0.75*CIRC} 400`);
+    val.textContent=p.fmt(value);
+  }
+  function set(v,push){
+    value=Math.max(0,Math.min(1,v)); STATE[p.id]=value; render();
+    if(push)casc.setParam(p.id,value);
+  }
+  render();
+
+  let dragging=false,lastY=0;
+  knob.addEventListener("pointerdown",e=>{dragging=true;lastY=e.clientY;knob.setPointerCapture(e.pointerId);e.stopPropagation();});
+  knob.addEventListener("pointermove",e=>{
+    if(!dragging)return;
+    const dy=lastY-e.clientY;lastY=e.clientY;
+    set(value+dy*0.005,true);
+  });
+  knob.addEventListener("pointerup",()=>dragging=false);
+  knob.addEventListener("dblclick",e=>{e.stopPropagation();set(def,true);});
+  casc.subscribe((id,v)=>{if(id===p.id)set(v,false);});
+  return cell;
+}
+
+function makeSection(s){
+  const sec=document.createElement("div");sec.className="sec";
+  const head=document.createElement("div");head.className="sec-head";
+  const title=document.createElement("div");title.className="sec-title";
+  title.innerHTML=`<span class="accent">${s.name[0]}</span>${s.name[1]}`;
+  const sw=document.createElement("div");sw.className="sw";sw.innerHTML='<div class="nub"></div>';
+  head.append(title,sw);
+
+  const knobs=document.createElement("div");knobs.className="sec-knobs";
+  s.knobs.forEach(k=>knobs.appendChild(makeKnob(k)));
+  sec.append(head,knobs);
+
+  let on=casc.getParam(s.toggle)>=0.5; STATE[s.toggle]=on?1:0;
+  function applyToggle(push){
+    sw.classList.toggle("on",on);
+    sec.classList.toggle("off",!on);
+    STATE[s.toggle]=on?1:0;
+    if(push)casc.setParam(s.toggle,on?1:0);
+  }
+  applyToggle(false);
+  function flip(){ on=!on; applyToggle(true); }
+  sw.addEventListener("click",e=>{e.stopPropagation();flip();});
+  title.addEventListener("click",flip);
+  casc.subscribe((id,v)=>{ if(id===s.toggle){ on=v>=0.5; applyToggle(false);} });
+  return sec;
+}
+
+const host=document.getElementById("sections");
+SECTIONS.forEach(s=>host.appendChild(makeSection(s)));
+
+/* keep Mix wired even though it lives logically in Output — expose via Early Low/High row already.
+   Add Mix as a knob into the visualizer stats only; bind a hidden control through subscribe. */
+casc.subscribe((id,v)=>{ if(id>=0&&id<STATE.length) STATE[id]=v; });
+
+/* ---------- live visualizer: particulate decay field ---------- */
+const cv=document.getElementById("viz");
+const ctx=cv.getContext("2d");
+function resize(){
+  const r=cv.getBoundingClientRect();
+  cv.width=Math.max(1,r.width*devicePixelRatio);
+  cv.height=Math.max(1,r.height*devicePixelRatio);
+}
+resize();
+addEventListener("resize",resize);
+new ResizeObserver(resize).observe(cv);
+
+const N=140;
+const parts=[];
+for(let i=0;i<N;i++) parts.push(spawn(true));
+function spawn(init){
+  return {
+    x:0.5, y:0.5,
+    ang:Math.random()*Math.PI*2,
+    r:init?Math.random():0,
+    life:Math.random(),
+    speed:0.4+Math.random()*0.6,
+    seed:Math.random()
+  };
+}
+
+function readState(){
+  return {
+    size:STATE[0], decay:STATE[1], damp:STATE[2], width:STATE[3],
+    diff:STATE[4], rate:STATE[5], depth:STATE[6], early:STATE[7],
+    mix:STATE[14],
+    algoOn:STATE[10]>=0.5, grainOn:STATE[11]>=0.5,
+    modOn:STATE[12]>=0.5, earlyOn:STATE[13]>=0.5
+  };
+}
+
+let t=0;
+function frame(){
+  const w=cv.width,h=cv.height;
+  const s=readState();
+  // background fade — longer decay = slower fade (more persistent trails)
+  const fade=0.10+(1-s.decay)*0.20;
+  ctx.fillStyle=`rgba(12,16,22,${fade})`;
+  ctx.fillRect(0,0,w,h);
+
+  const cx=w*0.5, cy=h*0.5;
+  const maxR=Math.min(w,h)*0.46*(0.45+s.size*0.55);
+  const modWobble=s.modOn? s.depth*0.5 : 0;
+  const modFreq=0.4+s.rate*4.0;
+
+  // early reflection ripple rings
+  if(s.earlyOn){
+    ctx.lineWidth=devicePixelRatio;
+    for(let k=0;k<5;k++){
+      const phase=(t*0.012*s.size*2+k/5)%1;
+      const rr=phase*maxR*1.05;
+      const a=(1-phase)*s.early*0.5;
+      ctx.strokeStyle=`rgba(90,209,200,${a})`;
+      ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);ctx.stroke();
+    }
+  }
+
+  // particulate tail
+  const density = s.algoOn ? 1 : 0.25;
+  const grainSpread = 0.4 + s.diff*0.9;
+  for(let i=0;i<N;i++){
+    const p=parts[i];
+    // advance radius outward; decay controls how far/long it lives
+    p.r += (0.0009+ p.speed*0.0016*s.size)* (0.6+s.decay*0.8);
+    p.life -= 0.004*(1.3 - s.decay);
+    p.ang += (p.seed-0.5)*0.02*grainSpread;
+    if(p.life<=0 || p.r>1){ parts[i]=spawn(false); continue; }
+
+    const wob = Math.sin(t*0.04*modFreq + p.seed*9)*modWobble*0.12;
+    const rad = (p.r+wob)*maxR;
+    const spreadW = 0.7+s.width*0.6;
+    const x=cx+Math.cos(p.ang)*rad*spreadW;
+    const y=cy+Math.sin(p.ang)*rad;
+
+    const alpha = p.life * (s.mix*0.5+0.5) * (s.algoOn?1:0.4);
+    const sz = (devicePixelRatio)*(0.6+ (1-p.r)*2.2*grainSpread) * density;
+    // damping shifts color toward darker/cooler as it ages
+    const warm = 1 - s.damp*0.4;
+    ctx.fillStyle=`rgba(${Math.round(90*warm+30)},${Math.round(209*warm)},${Math.round(200*warm)},${alpha*0.85})`;
+    ctx.beginPath();ctx.arc(x,y,sz,0,Math.PI*2);ctx.fill();
+  }
+
+  // central core glow scaled by mix
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,maxR*0.4);
+  g.addColorStop(0,`rgba(90,209,200,${0.10+s.mix*0.25})`);
+  g.addColorStop(1,"rgba(90,209,200,0)");
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,maxR*0.4,0,Math.PI*2);ctx.fill();
+
+  // stats
+  document.getElementById("st-size").textContent="SIZE "+Math.round(s.size*100)+"%";
+  document.getElementById("st-decay").textContent="DECAY "+Math.round(s.decay*100)+"%";
+  document.getElementById("st-mix").textContent="MIX "+Math.round(s.mix*100)+"%";
+
+  t++;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

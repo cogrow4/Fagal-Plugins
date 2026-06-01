@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Fagal Ensemble</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#11151c; --edge:#232a34;
+    --accent:#b48cff; --accent2:#7b5bbf; --accent3:#6fd0ff;
+    --text:#e6edf3; --muted:#8b97a7; --track:#222a35;
+  }
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;width:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    background:radial-gradient(150% 130% at 50% -15%,#1c2433 0%,var(--bg) 58%);
+    color:var(--text);overflow:hidden}
+  .wrap{height:100%;display:flex;flex-direction:column;padding:18px 24px 14px}
+
+  /* ---- header / wordmark ---- */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .brand{display:flex;flex-direction:column;gap:3px}
+  .wordmark{font-size:13px;font-weight:700;letter-spacing:.42em;text-transform:uppercase;color:var(--accent)}
+  .wordmark .sep{color:var(--muted);margin:0 .25em}
+  .product{font-size:22px;font-weight:600;letter-spacing:.06em}
+  .product span{color:var(--accent)}
+  .badge{font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;text-align:right;line-height:1.6}
+
+  /* ---- viewer ---- */
+  .viz{position:relative;flex:0 0 196px;border:1px solid var(--edge);border-radius:14px;
+    background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%);
+    overflow:hidden;margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+  .viz canvas{display:block;width:100%;height:100%}
+  .viz .vtag{position:absolute;top:10px;left:14px;font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted)}
+  .viz .vmode{position:absolute;top:10px;right:14px;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);font-weight:600}
+
+  /* ---- body: two section panels ---- */
+  .body{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0}
+  .section{border:1px solid var(--edge);border-radius:14px;background:var(--panel);
+    padding:14px 16px 10px;display:flex;flex-direction:column}
+  .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .sec-title{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .knobs{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:4px 6px;align-items:center;justify-items:center}
+
+  .cell{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .knob{position:relative;width:74px;height:74px;cursor:ns-resize;touch-action:none}
+  .knob svg{display:block;overflow:visible}
+  .knob .cap{filter:drop-shadow(0 4px 10px rgba(0,0,0,.45))}
+  .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .val{font-size:11px;font-variant-numeric:tabular-nums;color:var(--text);
+    background:var(--panel2);border:1px solid var(--edge);border-radius:6px;
+    padding:2px 8px;min-width:56px;text-align:center}
+
+  /* ---- mode selector ---- */
+  .modesel{display:flex;gap:6px}
+  .modesel button{flex:1;background:var(--panel2);border:1px solid var(--edge);color:var(--muted);
+    font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:7px 4px;border-radius:8px;
+    cursor:pointer;transition:.15s;font-weight:600}
+  .modesel button.on{background:linear-gradient(180deg,var(--accent2),#5a3f96);
+    color:#fff;border-color:var(--accent);box-shadow:0 0 14px rgba(180,140,255,.35)}
+
+  footer{margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+  .hint{font-size:10px;color:var(--muted)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px var(--accent);display:inline-block;margin-right:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="wordmark">FAGAL<span class="sep">·</span>PLUGINS</div>
+      <div class="product">Fagal <span>Ensemble</span></div>
+    </div>
+    <div class="badge">multi-voice modulation<br/>chorus · ensemble · flanger</div>
+  </header>
+
+  <div class="viz">
+    <span class="vtag">LFO · voice modulation</span>
+    <span class="vmode" id="vmode">CHORUS</span>
+    <canvas id="cv"></canvas>
+  </div>
+
+  <div class="body">
+    <div class="section">
+      <div class="sec-head"><div class="sec-title">Modulation</div></div>
+      <div class="knobs" id="knobsMod"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head">
+        <div class="sec-title">Voices</div>
+        <div class="modesel" id="modesel">
+          <button data-m="0">Chorus</button>
+          <button data-m="1">Ensemble</button>
+          <button data-m="2">Flanger</button>
+        </div>
+      </div>
+      <div class="knobs" id="knobsVoice"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="hint"><span class="dot"></span>drag knob vertically · double-click to reset</div>
+    <div class="badge">Fagal Ensemble v2.0</div>
+  </footer>
+</div>
+
+<script>
+/* ---- CASC UI <-> DSP bridge (forward-compatible shim) ----
+ * The host injects window.casc with setParam(id,value 0..1), getParam(id)
+ * and subscribe(cb). Standalone, we provide a stateful stub so the UI is
+ * still fully interactive and the visualizer animates. */
+const casc = window.casc || (window.casc = (()=>{
+  const state={};
+  return {
+    _subs:[],
+    setParam(id,v){state[id]=v;},
+    getParam(id){return (id in state)?state[id]:PARAMS_BY_ID[id].def;},
+    subscribe(cb){this._subs.push(cb);}
+  };
+})());
+
+const PARAMS = [
+  {id:0,label:"Rate",   sec:"mod",  def:0.28, fmt:v=>(0.02+v*7.98).toFixed(2)+" Hz"},
+  {id:1,label:"Depth",  sec:"mod",  def:0.45, fmt:v=>Math.round(v*100)+"%"},
+  {id:6,label:"Feedbk", sec:"mod",  def:0.5,  fmt:v=>Math.round((v*2-1)*100)+"%"},
+  {id:8,label:"Center", sec:"mod",  def:0.45, fmt:v=>centerMs(v).toFixed(1)+" ms"},
+  {id:3,label:"Voices", sec:"voice",def:0.6,  fmt:v=>String(voiceCount(v))},
+  {id:4,label:"Width",  sec:"voice",def:0.8,  fmt:v=>Math.round(v*100)+"%"},
+  {id:5,label:"Tone",   sec:"voice",def:0.6,  fmt:v=>Math.round(v*100)+"%"},
+  {id:2,label:"Mix",    sec:"voice",def:0.5,  fmt:v=>Math.round(v*100)+"%"},
+];
+const PARAMS_BY_ID={}; PARAMS.forEach(p=>PARAMS_BY_ID[p.id]=p);
+PARAMS_BY_ID[7]={id:7,def:0.0}; /* mode (selector, not a knob) */
+
+function voiceCount(v){let n=Math.round(v*5)+1;return Math.max(1,Math.min(6,n));}
+function modeIndex(v){return Math.max(0,Math.min(2,Math.round(v*2)));}
+function centerMs(v){
+  return getMode()===2 ? (0.3+v*6.0) : (0.5+v*24.5);
+}
+
+/* current live param values mirror */
+const live={};
+PARAMS.forEach(p=>live[p.id]=casc.getParam(p.id));
+live[7]=casc.getParam(7);
+function getMode(){return modeIndex(live[7]);}
+
+/* ---- knob factory ---- */
+const ARC_START=-135, ARC_END=135;
+function knobSVG(){
+  return `<svg width="74" height="74" viewBox="0 0 86 86">
+    <circle cx="43" cy="43" r="36" fill="none" stroke="var(--track)" stroke-width="6"
+      stroke-linecap="round" stroke-dasharray="170 400" transform="rotate(135 43 43)"/>
+    <circle class="arc" cx="43" cy="43" r="36" fill="none" stroke="var(--accent)" stroke-width="6"
+      stroke-linecap="round" stroke-dasharray="0 400" transform="rotate(135 43 43)"/>
+    <g class="cap">
+      <circle cx="43" cy="43" r="27" fill="var(--panel2)" stroke="var(--edge)" stroke-width="1.5"/>
+      <line class="ind" x1="43" y1="43" x2="43" y2="22" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </svg>`;
+}
+function makeKnob(p){
+  const cell=document.createElement("div");cell.className="cell";
+  const knob=document.createElement("div");knob.className="knob";knob.innerHTML=knobSVG();
+  const label=document.createElement("div");label.className="label";label.textContent=p.label;
+  const val=document.createElement("div");val.className="val";
+  cell.append(knob,label,val);
+
+  let value=casc.getParam(p.id);
+  const arc=knob.querySelector(".arc");
+  const ind=knob.querySelector(".ind");
+  const CIRC=2*Math.PI*36;
+
+  function render(){
+    const ang=ARC_START+(ARC_END-ARC_START)*value;
+    ind.setAttribute("transform",`rotate(${ang} 43 43)`);
+    arc.setAttribute("stroke-dasharray",`${value*(270/360)*CIRC} 400`);
+    val.textContent=p.fmt(value);
+  }
+  function set(v,push){
+    value=Math.max(0,Math.min(1,v));live[p.id]=value;render();
+    if(push)casc.setParam(p.id,value);
+  }
+  render();
+
+  let dragging=false,lastY=0;
+  knob.addEventListener("pointerdown",e=>{dragging=true;lastY=e.clientY;knob.setPointerCapture(e.pointerId);});
+  knob.addEventListener("pointermove",e=>{
+    if(!dragging)return;const dy=lastY-e.clientY;lastY=e.clientY;set(value+dy*0.005,true);
+  });
+  knob.addEventListener("pointerup",()=>dragging=false);
+  knob.addEventListener("dblclick",()=>set(p.def,true));
+  casc.subscribe((id,v)=>{if(id===p.id)set(v,false);});
+  return cell;
+}
+
+const hostMod=document.getElementById("knobsMod");
+const hostVoice=document.getElementById("knobsVoice");
+PARAMS.forEach(p=>{(p.sec==="mod"?hostMod:hostVoice).appendChild(makeKnob(p));});
+
+/* ---- mode selector ---- */
+const modesel=document.getElementById("modesel");
+const vmode=document.getElementById("vmode");
+const MODE_NAMES=["CHORUS","ENSEMBLE","FLANGER"];
+function syncMode(){
+  const m=getMode();
+  vmode.textContent=MODE_NAMES[m];
+  [...modesel.children].forEach(b=>b.classList.toggle("on",+b.dataset.m===m));
+}
+[...modesel.children].forEach(b=>{
+  b.addEventListener("click",()=>{
+    const m=+b.dataset.m;live[7]=m/2;casc.setParam(7,m/2);syncMode();
+  });
+});
+casc.subscribe((id,v)=>{if(id===7){live[7]=v;syncMode();}});
+syncMode();
+
+/* ---- live animated visualizer ----
+ * draws one sine curve per active voice, animating at Rate, amplitude=Depth,
+ * each voice phase-offset like the DSP (voff * 2PI * spread). */
+const cv=document.getElementById("cv");
+const ctx=cv.getContext("2d");
+function fit(){
+  const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  cv.width=r.width*dpr;cv.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+new ResizeObserver(fit).observe(cv);fit();
+
+const ACC=getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()||"#b48cff";
+const ACC3=getComputedStyle(document.documentElement).getPropertyValue("--accent3").trim()||"#6fd0ff";
+function lerpColor(a,b,t){
+  const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);
+  const ar=pa>>16,ag=(pa>>8)&255,ab=pa&255,br=pb>>16,bg=(pb>>8)&255,bb=pb&255;
+  const r=Math.round(ar+(br-ar)*t),g=Math.round(ag+(bg-ag)*t),bl=Math.round(ab+(bb-ab)*t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+let lfoPhase=0,lastT=performance.now();
+function draw(now){
+  const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+  const W=cv.clientWidth,H=cv.clientHeight,mid=H/2;
+
+  const rateHz=0.02+live[0]*7.98;
+  const depth=live[1];
+  const nv=voiceCount(live[3]);
+  const width=live[4];
+  const mode=getMode();
+  const spread=(mode===1)?1.0:(mode===2?0.25:0.7);
+
+  lfoPhase+=2*Math.PI*rateHz*dt;
+  if(lfoPhase>1e6)lfoPhase-=1e6;
+
+  ctx.clearRect(0,0,W,H);
+
+  /* grid */
+  ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,mid);ctx.lineTo(W,mid);ctx.stroke();
+  for(let gx=0;gx<=W;gx+=W/8){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+
+  const amp=(H*0.40)*(0.12+depth*0.88);
+  const cycles=1.8; /* horizontal cycles shown */
+
+  for(let v=0;v<nv;v++){
+    const voff=v/nv;
+    const phOff=voff*2*Math.PI*spread;
+    const t=nv>1?v/(nv-1):0;
+    const col=lerpColor(ACC,ACC3,t);
+    /* width fans voices vertically a touch so they're distinguishable */
+    const yspread=(v-(nv-1)/2)*(amp*0.10*width);
+
+    ctx.beginPath();
+    ctx.lineWidth=mode===2?2.4:1.8;
+    ctx.strokeStyle=col;
+    ctx.globalAlpha=0.85;
+    for(let x=0;x<=W;x+=2){
+      const ph=lfoPhase+phOff+(x/W)*cycles*2*Math.PI;
+      const y=mid+yspread+Math.sin(ph)*amp;
+      if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    /* leading dot = current modulation value for this voice */
+    const phNow=lfoPhase+phOff;
+    const yd=mid+yspread+Math.sin(phNow)*amp;
+    ctx.globalAlpha=1;
+    ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(10,yd,3.2,0,2*Math.PI);ctx.fill();
+    ctx.shadowColor=col;ctx.shadowBlur=10;
+    ctx.beginPath();ctx.arc(10,yd,1.6,0,2*Math.PI);ctx.fill();
+    ctx.shadowBlur=0;
+  }
+  ctx.globalAlpha=1;
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
